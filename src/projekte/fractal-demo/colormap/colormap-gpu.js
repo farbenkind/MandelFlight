@@ -1,5 +1,8 @@
 import cmEditorRenderCode from "./cmap-render.wgsl?raw";
-import cmComputeShaderCode from "./cmap-compute.wgsl?raw";
+import cmComputeShaderTemplate from "./cmap-compute.wgsl?raw";
+import { cmapStructWGSL } from "./params.js";
+
+const cmComputeShaderCode = cmComputeShaderTemplate.replace("//__CMPARAMS_STRUCT__", cmapStructWGSL);
 
 const PREVIEW_WIDTH = 1024;
 const PREVIEW_HEIGHT = 64;

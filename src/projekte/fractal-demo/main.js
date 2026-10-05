@@ -3,6 +3,8 @@ import { startAudioInput } from "./audio-input.js";
 import { createColormapGpu } from "./colormap/colormap-gpu.js";
 import { pi, debug, fmod, symExp, log, clamp } from "./util.js";
 import { ModMode, BaseMode, ModTransfrom, sliderMod, KnobState, knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
+import { cmapSections, packCMParams as packParams } from "./colormap/params.js";
+import { buildCmapUI } from "./ui/cmap-ui.js";
 import { initKnobs } from "./ui/knob-ui.js";
 import { createPresets } from "./presets.js";
 import { makeEnv, makeConst, makeOsc1, makeLinearTransform, makePowerTransform, makeSourceFromName } from "./modulation.js";
@@ -85,40 +87,9 @@ var editorAudioReact = true;
 
 
 
-function packCMParams() {
-    return new Float32Array([
-        knobs["amount-r"].cmValue,
-        knobs["shape-r"].cmValue,
-        knobs["pow-r"].cmValue,
-        knobs["pos-r"].cmValue,
-        knobs["mult-r"].cmValue,
+const packCMParams = () => packParams(knobs);
 
-        knobs["amount-g"].cmValue,
-        knobs["shape-g"].cmValue,
-        knobs["pow-g"].cmValue,
-        knobs["pos-g"].cmValue,
-        knobs["mult-g"].cmValue,
-
-        knobs["amount-b"].cmValue,
-        knobs["shape-b"].cmValue,
-        knobs["pow-b"].cmValue,
-        knobs["pos-b"].cmValue,
-        knobs["mult-b"].cmValue,
-
-        knobs["phaseShift"].cmValue,
-        knobs["hueShift"].cmValue,
-
-        ...["xr", "xg", "xb"].flatMap(c => [
-            knobs[`prePow-${c}`].cmValue,
-            knobs[`waveMix-${c}`].cmValue,
-            knobs[`waveFreq-${c}`].cmValue,
-            knobs[`postPow-${c}`].cmValue,
-            knobs[`shift-${c}`].cmValue,
-        ]),
-    ]);
-}
-
-
+buildCmapUI(document.getElementById("cmKnobs"), cmapSections);
 initKnobs();
 
 const colormapGpu = createColormapGpu({

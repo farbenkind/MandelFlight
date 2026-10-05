@@ -42,14 +42,14 @@ export function initKnobs() {
             updateVisual();
         });
     });
-}
 
-document.querySelectorAll(".mod-toggle").forEach(btn => {
-    const param = btn.dataset.param;
-
-    btn.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        knobs[param].modEnabled = !knobs[param].modEnabled;
-        btn.classList.toggle("active", knobs[param].modEnabled);
+    document.querySelectorAll(".mod-toggle").forEach(btn => {
+        const param = btn.dataset.param;
+    
+        btn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            knobs[param].modEnabled = !knobs[param].modEnabled;
+            btn.classList.toggle("active", knobs[param].modEnabled);
+        });
     });
-});
+}

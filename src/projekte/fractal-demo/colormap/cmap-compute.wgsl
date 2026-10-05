@@ -1,43 +1,4 @@
-struct CMParams {
-    amount_r : f32,
-    shape_r  : f32,
-    pow_r    : f32,
-    pos_r    : f32,
-    mult_r   : f32,
-
-    amount_g : f32,
-    shape_g  : f32,
-    pow_g    : f32,
-    pos_g    : f32,
-    mult_g   : f32,
-
-    amount_b : f32,
-    shape_b  : f32,
-    pow_b    : f32,
-    pos_b    : f32,
-    mult_b   : f32,
-
-    phaseShift : f32,
-    hueShift : f32,
-
-    xpre_r : f32,
-    xmix_r : f32,
-    xfreq_r : f32,
-    xpost_r : f32,
-    xshift_r : f32,
-
-    xpre_g : f32,
-    xmix_g : f32,
-    xfreq_g : f32,
-    xpost_g : f32,
-    xshift_g : f32,
-
-    xpre_b : f32,
-    xmix_b : f32,
-    xfreq_b : f32,
-    xpost_b : f32,
-    xshift_b : f32,
-};
+//__CMPARAMS_STRUCT__
 
 @group(0) @binding(0)
 var<uniform> cmParams : CMParams;
