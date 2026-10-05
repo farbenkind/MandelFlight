@@ -7,11 +7,11 @@ const clamp01 = v => Math.min(1, Math.max(0, v));
 const logb = (x, base) => Math.log(x) / Math.log(base);
 
 // knob=0.5: Identitaet. knob>0.5: base^e (Stauchung rechts), e bis mult.
-// knob<0.5: an der Antidiagonale gespiegelt, 1-(1-base)^(1/e) (gleiche Stauchung links).
+// knob<0.5: punktgespiegelt am Mittelpunkt, 1-(1-base)^e (gleiche Stauchung links, Kurve ueber der Diagonale).
 function spk(base, knob, mult) {
     const e = Math.pow(mult, Math.abs(knob - 0.5) * 2);
     if (knob >= 0.5) return Math.pow(base, e);
-    return 1 - Math.pow(1 - base, 1 / e);
+    return 1 - Math.pow(1 - base, e);
 }
 function powerWave(t, shape) {
     const c = 0.5 + 0.5 * Math.cos(t);

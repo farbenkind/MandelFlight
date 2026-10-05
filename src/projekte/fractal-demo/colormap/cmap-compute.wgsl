@@ -32,13 +32,13 @@ fn sympow(base :f32, exp:f32) -> f32 {
     }
 }
 // knob=0.5: Identitaet. knob>0.5: base^e (Stauchung rechts), e bis mult.
-// knob<0.5: an der Antidiagonale gespiegelt, 1-(1-base)^(1/e) (gleiche Stauchung links).
+// knob<0.5: punktgespiegelt am Mittelpunkt, 1-(1-base)^e (gleiche Stauchung links, Kurve ueber der Diagonale).
 fn spk(base: f32, knob: f32, mult: f32) -> f32 {
     let e = pow(mult, abs(knob - 0.5) * 2.0);
     if (knob >= 0.5) {
         return pow(base, e);
     }
-    return 1.0 - pow(1.0 - base, 1.0 / e);
+    return 1.0 - pow(1.0 - base, e);
 }
 fn powknob(base: f32, knob: f32, mult: f32) -> f32 {
         
