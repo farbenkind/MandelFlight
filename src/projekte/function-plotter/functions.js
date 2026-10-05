@@ -6,9 +6,12 @@ const pi2 = Math.PI * 2;
 const clamp01 = v => Math.min(1, Math.max(0, v));
 const logb = (x, base) => Math.log(x) / Math.log(base);
 
-// Exponent laeuft exponentiell von 1/mult (knob=0) ueber 1 (knob=0.5) bis mult (knob=1)
+// knob=0.5: Identitaet. knob>0.5: base^e (Stauchung rechts), e bis mult.
+// knob<0.5: an der Antidiagonale gespiegelt, 1-(1-base)^(1/e) (gleiche Stauchung links).
 function spk(base, knob, mult) {
-    return Math.pow(base, Math.pow(mult, (knob - 0.5) * 2));
+    const e = Math.pow(mult, Math.abs(knob - 0.5) * 2);
+    if (knob >= 0.5) return Math.pow(base, e);
+    return 1 - Math.pow(1 - base, 1 / e);
 }
 function powerWave(t, shape) {
     const c = 0.5 + 0.5 * Math.cos(t);

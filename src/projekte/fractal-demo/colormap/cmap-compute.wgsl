@@ -31,9 +31,14 @@ fn sympow(base :f32, exp:f32) -> f32 {
         return f32(pow(b,e));
     }
 }
-// Exponent laeuft exponentiell von 1/mult (knob=0) ueber 1 (knob=0.5) bis mult (knob=1)
+// knob=0.5: Identitaet. knob>0.5: base^e (Stauchung rechts), e bis mult.
+// knob<0.5: an der Antidiagonale gespiegelt, 1-(1-base)^(1/e) (gleiche Stauchung links).
 fn spk(base: f32, knob: f32, mult: f32) -> f32 {
-    return pow(base, pow(mult, (knob - 0.5) * 2.0));
+    let e = pow(mult, abs(knob - 0.5) * 2.0);
+    if (knob >= 0.5) {
+        return pow(base, e);
+    }
+    return 1.0 - pow(1.0 - base, 1.0 / e);
 }
 fn powknob(base: f32, knob: f32, mult: f32) -> f32 {
         
