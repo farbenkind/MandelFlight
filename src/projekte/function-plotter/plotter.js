@@ -99,6 +99,12 @@ function draw() {
     }
 }
 
+// Zeichnet neu und sichert die Kette; fuer jede Aenderung der Kette (nicht fuer Hover)
+function commit() {
+    draw();
+    saveChain();
+}
+
 function makeKnob(stage) {
     const wrap = document.createElement("div");
     wrap.className = "knob-wrap";
@@ -112,7 +118,7 @@ function makeKnob(stage) {
         knob.style.transform = `rotate(${stage.k * 270 - 135}deg)`;
         val.textContent = `${stage.fn.knobLabel} ${stage.k.toFixed(2)}`;
     };
-    const set = v => { stage.k = clamp(v); update(); draw(); };
+    const set = v => { stage.k = clamp(v); update(); commit(); };
 
     let dragging = false;
     knob.addEventListener("pointerdown", ev => { dragging = true; knob.setPointerCapture(ev.pointerId); });
@@ -150,13 +156,13 @@ function renderStages() {
             stage.fn = functions[+select.value];
             stage.k = stage.fn.init;
             knob.update();
-            draw();
+            commit();
         });
 
         const del = document.createElement("button");
         del.textContent = "x";
         del.title = "Stufe entfernen";
-        del.addEventListener("click", () => { stages.splice(i, 1); renderStages(); draw(); });
+        del.addEventListener("click", () => { stages.splice(i, 1); renderStages(); commit(); });
 
         row.append(title, select, knob.wrap, del);
         stagesEl.appendChild(row);
@@ -166,7 +172,7 @@ function renderStages() {
 function addStage(fn = functions[0]) {
     stages.push({ fn, k: fn.init });
     renderStages();
-    draw();
+    commit();
 }
 
 document.getElementById("addStage").addEventListener("click", () => addStage(functions[0]));
@@ -179,4 +185,67 @@ canvas.addEventListener("pointermove", ev => {
 });
 canvas.addEventListener("pointerleave", () => { hoverX = null; draw(); });
 
-addStage(functions[0]);
+//////////////////////// Speichern / Laden
+
+const CHAIN_KEY = "plotterChain";
+const PRESETS_KEY = "plotterPresets";
+
+// Nur Funktions-ID und Knobwert werden gespeichert; Funktionen kommen aus functions.js
+const serialize = () => stages.map(s => ({ fn: s.fn.id, k: s.k }));
+
+function restore(data) {
+    stages.length = 0;
+    for (const d of data) {
+        const fn = functions.find(f => f.id === d.fn);
+        if (fn) stages.push({ fn, k: clamp(Number(d.k)) });
+    }
+    renderStages();
+    commit();
+}
+
+const readJSON = (key, fallback) => {
+    try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+};
+
+function saveChain() {
+    localStorage.setItem(CHAIN_KEY, JSON.stringify(serialize()));
+}
+
+const presetList = document.getElementById("presetList");
+const presetName = document.getElementById("presetName");
+
+function renderPresets() {
+    const presets = readJSON(PRESETS_KEY, []);
+    presetList.innerHTML = "";
+    presets.forEach((p, i) => {
+        const li = document.createElement("li");
+        li.textContent = p.name;
+        li.addEventListener("click", () => restore(p.stages));
+        const del = document.createElement("button");
+        del.textContent = "x";
+        del.addEventListener("click", ev => {
+            ev.stopPropagation();
+            presets.splice(i, 1);
+            localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+            renderPresets();
+        });
+        li.appendChild(del);
+        presetList.appendChild(li);
+    });
+}
+
+document.getElementById("presetSave").addEventListener("click", () => {
+    const name = presetName.value.trim();
+    if (!name) return;
+    const presets = readJSON(PRESETS_KEY, []);
+    const entry = { name, stages: serialize() };
+    const idx = presets.findIndex(p => p.name === name);
+    if (idx >= 0) presets[idx] = entry; else presets.push(entry);
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+    presetName.value = "";
+    renderPresets();
+});
+
+renderPresets();
+const saved = readJSON(CHAIN_KEY, null);
+if (saved?.length) restore(saved); else addStage(functions[0]);

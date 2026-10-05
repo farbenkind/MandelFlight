@@ -89,6 +89,43 @@ label { font-size: 13px; }
     transform: translateX(-50%);
 }
 
+#presetBar {
+    display: flex;
+    gap: 8px;
+}
+
+#presetBar input {
+    flex: 1;
+    min-width: 0;
+    background: #111;
+    color: #cceeff;
+    border: 1px solid #0abaff;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+#presetList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+#presetList li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+#presetList li:hover {
+    background: #0abaff22;
+}
+
 #readout {
     font-family: monospace;
     font-size: 12px;
