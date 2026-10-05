@@ -31,18 +31,9 @@ fn sympow(base :f32, exp:f32) -> f32 {
         return f32(pow(b,e));
     }
 }
-fn sympowknob(base: f32, knob: f32, mult: f32) -> f32 {
-
-    var exp_1 = pow(knob, logb(mult,2)) * mult;
-
-    
-    if (exp_1 < 1) {
-        exp_1 = pow(knob, logb(mult/100,2)) * mult/100;
-        return 1-pow(1-base, 1/exp_1);
-    }
-    else {
-        return pow(base, exp_1);
-    }
+// Exponent laeuft exponentiell von 1/mult (knob=0) ueber 1 (knob=0.5) bis mult (knob=1)
+fn spk(base: f32, knob: f32, mult: f32) -> f32 {
+    return pow(base, pow(mult, (knob - 0.5) * 2.0));
 }
 fn powknob(base: f32, knob: f32, mult: f32) -> f32 {
         
@@ -71,21 +62,21 @@ fn powerWave(t: f32, shape: f32) -> f32 {
 fn primcolmap1(x: f32, amount: f32, power: f32, pos: f32, mult: f32, phaseShift: f32) -> f32 {
     let t = (x * mult * 20.0 - pos - phaseShift) * pi2;
     let c = 0.5 + small + (0.5-small) * cos(t);
-    return amount * sympowknob(c, power, 10000.0);
+    return amount * spk(c, power, 10000.0);
 }
 fn primcolmap2(x: f32, amount: f32, shape:f32, power: f32, pos: f32, mult: f32, phaseShift: f32) -> f32 {
     let t = (x * mult * 20.0 - pos - phaseShift) * pi2;
     var c = small+(1-small)*powerWave(t,shape);
     //ec = powerWave(t,shape);
-    return amount * sympowknob(c, power, 10000.0);
+    return amount * spk(c, power, 10000.0);
 }
 
 // xCmap: verzerrt nur die Domain x; bei Mix=0 und Pow-Knobs=0.5 ist sie die Identitaet
 fn xwarp(x: f32, prePow: f32, waveMix: f32, waveFreq: f32, postPow: f32, shift: f32) -> f32 {
-    let x1 = sympowknob(clamp(x, 0.0, 1.0), max(prePow, 0.001), 100.0);
+    let x1 = spk(clamp(x, 0.0, 1.0), max(prePow, 0.001), 100.0);
     let wave = 0.5 + 0.5 * cos((x1 * waveFreq * 20.0 - shift) * pi2);
     let mixed = mix(x1, wave, waveMix);
-    return sympowknob(clamp(mixed, 0.0, 1.0), max(postPow, 0.001), 100.0);
+    return spk(clamp(mixed, 0.0, 1.0), max(postPow, 0.001), 100.0);
 }
 
 fn xlutLookup(channel: u32, x: f32) -> f32 {

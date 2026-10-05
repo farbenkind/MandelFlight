@@ -6,15 +6,10 @@ const pi2 = Math.PI * 2;
 const clamp01 = v => Math.min(1, Math.max(0, v));
 const logb = (x, base) => Math.log(x) / Math.log(base);
 
-function sympowknob(base, knob, mult) {
-    let e = Math.pow(knob, logb(mult, 2)) * mult;
-    if (e < 1) {
-        e = Math.pow(knob, logb(mult / 100, 2)) * mult / 100;
-        return 1 - Math.pow(1 - base, 1 / e);
-    }
-    return Math.pow(base, e);
+// Exponent laeuft exponentiell von 1/mult (knob=0) ueber 1 (knob=0.5) bis mult (knob=1)
+function spk(base, knob, mult) {
+    return Math.pow(base, Math.pow(mult, (knob - 0.5) * 2));
 }
-
 function powerWave(t, shape) {
     const c = 0.5 + 0.5 * Math.cos(t);
     if (shape > 0.5) return Math.pow(c, 1 + (shape - 0.5) * 50);
@@ -32,7 +27,7 @@ export const functions = [
         label: "sympow (Shape-Knob)",
         knobLabel: "Shape",
         init: 0.5,
-        f: (x, k) => sympowknob(clamp01(x), Math.max(k, 0.001), 100),
+        f: (x, k) => spk(clamp01(x), k, 100),
     },
     {
         id: "powerWave",
