@@ -386,7 +386,9 @@ button.polish {
     z-index: 12000;
 }
 
-#presetPopup.hidden {
+#presetPopup.hidden,
+#presetSaveUI.hidden,
+#presetLoadUI.hidden {
     display: none;
 }
 

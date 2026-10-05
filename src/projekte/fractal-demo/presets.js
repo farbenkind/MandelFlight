@@ -1,5 +1,6 @@
 import { knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
-import { openYesNo } from "./ui/dialogs.js";
+import { openYesNo, openAlert } from "./ui/dialogs.js";
+import { listPresets, loadPreset, saveLocal, deleteLocal, saveRemote, deleteRemote } from "./preset-store.js";
 
 export function createPresets({ fractalRenderer, packCMParams }) {
     let popupOpen = false;
@@ -24,16 +25,6 @@ export function createPresets({ fractalRenderer, packCMParams }) {
             },
             version: 1
         };
-    }
-    //          2. Lokales Speichern (localStorage)
-    function savePresetLocal(preset) {
-        const presets = JSON.parse(localStorage.getItem("presets") || "[]");
-        presets.push(preset);
-        localStorage.setItem("presets", JSON.stringify(presets));
-    }
-    //          3. Lokales Laden (Liste anzeigen)
-    function loadPresetsLocal() {
-        return JSON.parse(localStorage.getItem("presets") || "[]");
     }
     //          5. JS‑Logik für Popup
     const presetPopup = document.getElementById("presetPopup");
@@ -60,46 +51,49 @@ export function createPresets({ fractalRenderer, packCMParams }) {
         presetLoadUI.classList.add("hidden");
         presetPopup.classList.remove("hidden");
     }
-    //          7. Load‑Popup öffnen (Taste L Liste Anzeigen)
-    function deletePreset(index) {
-        const presets = loadPresetsLocal();
-        presets.splice(index, 1);
-        localStorage.setItem("presets", JSON.stringify(presets));
-    }
-
-    function openPresetLoadPopup() {
+    //          7. Load-Popup öffnen (Taste L): lokale und Server-Presets
+    async function openPresetLoadPopup() {
         popupOpen = true;
 
         presetPopupTitle.textContent = "Preset laden";
         presetSaveUI.classList.add("hidden");
         presetLoadUI.classList.remove("hidden");
         presetPopup.classList.remove("hidden");
+        presetList.textContent = "Lade …";
 
-        const presets = loadPresetsLocal();
-        presetList.innerHTML = "";
+        const entries = await listPresets();
+        presetList.textContent = "";
+        if (!entries.length) presetList.textContent = "Keine Presets vorhanden.";
 
-        presets.forEach((p, idx) => {
+        for (const entry of entries) {
             const li = document.createElement("li");
-            li.textContent = p.name;
+            li.textContent = `${entry.remote ? "☁ " : "💾 "}${entry.name}`;
 
-            // Laden
-            li.onclick = () => applyPreset(p);
+            li.onclick = async () => {
+                const preset = await loadPreset(entry);
+                if (preset) applyPreset(preset);
+                else await openAlert("Preset konnte nicht geladen werden.");
+            };
 
-            // Löschen
             const del = document.createElement("button");
             del.textContent = "X";
             del.style.float = "right";
-            del.onclick = (ev) => {
+            del.onclick = async (ev) => {
                 ev.stopPropagation();
-                deletePreset(idx);
-                openPresetLoadPopup(); // reload list
+                if (await openYesNo(`Preset "${entry.name}" löschen?${entry.remote ? "\n(auch auf dem Server)" : ""}`) !== "yes") return;
+                try {
+                    if (entry.remote) await deleteRemote(entry.name);
+                    deleteLocal(entry.name);
+                } catch (err) {
+                    await openAlert(err.message);
+                }
+                openPresetLoadPopup();
             };
 
             li.appendChild(del);
             presetList.appendChild(li);
-        });
-    }
-    //          8. Preset anwenden
+        }
+    }    //          8. Preset anwenden
     function applyPreset(preset) {
         // Fractal
         fractalRenderer.setView({
@@ -116,26 +110,31 @@ export function createPresets({ fractalRenderer, packCMParams }) {
         presetPopup.classList.add("hidden");
         popupOpen = false;
     }
-    // Save Preset
-    async function trySavePreset(name) {
-        const presets = loadPresetsLocal();
-        const exists = presets.some(p => p.name === name);
-
-        if (exists) {
+    // Save Preset: lokal oder (mit Passwort) auf dem Server
+    async function trySavePreset(name, toServer) {
+        if (!name) return;
+        const existing = (await listPresets()).some(p => p.name === name && (toServer ? p.remote : p.local));
+        if (existing) {
             const action = await openYesNo(`Preset "${name}" existiert bereits.\nOverwrite?`);
             if (action !== "yes") return;
         }
 
         const preset = buildPreset(name);
-        savePresetLocal(preset);
+        try {
+            if (toServer) await saveRemote(preset);
+            else saveLocal(preset);
+        } catch (err) {
+            await openAlert(err.message);
+            return;
+        }
         closePresetPopup();
     }
 
-    //          9. Save‑Button
-    document.getElementById("presetSaveBtn").onclick = () => {
-        const name = presetNameInput.value.trim();
-        trySavePreset(name)
-    };
+    //          9. Save-Buttons
+    document.getElementById("presetSaveBtn").onclick = () =>
+        trySavePreset(presetNameInput.value.trim(), false);
+    document.getElementById("presetSaveRemoteBtn").onclick = () =>
+        trySavePreset(presetNameInput.value.trim(), true);
 
     return { openSave: openPresetSavePopup, openLoad: openPresetLoadPopup, isOpen: () => popupOpen };
 }
