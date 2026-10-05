@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MandelFlight - Function Plotter</title>
+    <link rel="stylesheet" href="/src/projekte/function-plotter/plotter.css">
+</head>
+
+<body>
+    <div id="app">
+        <canvas id="plot" width="600" height="600"></canvas>
+
+        <div id="controls">
+            <select id="fnSelect"></select>
+            <div id="knobLabel"></div>
+            <div class="knob" id="knob"></div>
+            <div id="readout"></div>
+            <div id="hint">Knob: ziehen oder Mausrad, Doppelklick = Reset. Maus ueber dem Plot zeigt f(x).</div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/projekte/function-plotter/plotter.js"></script>
+</body>
+
+</html>
