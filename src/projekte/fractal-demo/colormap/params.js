@@ -34,6 +34,31 @@ const warpChannel = (c, color) => {
     };
 };
 
+// ALL-Panels: wirken zusaetzlich auf alle drei Kanaele (Neutralwerte siehe cmap-compute.wgsl, cm_main)
+const primAll = {
+    color: "all",
+    knobs: [
+        knob("amount-all", "Amount", 1, "amount_all"),
+        knob("shape-all", "Shape", 0.5, "shape_all"),
+        knob("pow-all", "Pow", 0.5, "pow_all"),
+        knob("pos-all", "Pos", 0, "pos_all"),
+        knob("mult-all", "Mult", 0, "mult_all"),
+        knob("phaseShift", "phaseShift", 0, "phaseShift"),
+        knob("hueShift", "hueShift", 0, "hueShift"),
+    ],
+};
+
+const warpAll = {
+    color: "all",
+    knobs: [
+        knob("prePow-xall", "Shape1", 0.5, "xpre_all"),
+        knob("waveMix-xall", "Mix", 0, "xmix_all"),
+        knob("waveFreq-xall", "Freq", 0, "xfreq_all"),
+        knob("postPow-xall", "Shape2", 0.5, "xpost_all"),
+        knob("shift-xall", "Shift", 0, "xshift_all"),
+    ],
+};
+
 // Domain-Warper vor der PrimCmap; Sektionen erscheinen von links nach rechts
 export const cmapSections = [
     {
@@ -43,6 +68,7 @@ export const cmapSections = [
             warpChannel("r", "red"),
             warpChannel("g", "green"),
             warpChannel("b", "blue"),
+            warpAll,
         ],
     },
     {
@@ -52,13 +78,7 @@ export const cmapSections = [
             primChannel("r", "red", 0.2),
             primChannel("g", "green", 0.4),
             primChannel("b", "blue", 0.6),
-            {
-                color: "all",
-                knobs: [
-                    knob("phaseShift", "phaseShift", 0, "phaseShift"),
-                    knob("hueShift", "hueShift", 0, "hueShift"),
-                ],
-            },
+            primAll,
         ],
     },
 ];

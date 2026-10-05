@@ -97,14 +97,16 @@ fn cm_main(@builtin(global_invocation_id) gid : vec3<u32>) {
 
     let x = f32(gid.x) / 1024.0;
 
-    let xr = xlutLookup(0u, xwarp(x, cmParams.xpre_r, cmParams.xmix_r, cmParams.xfreq_r, cmParams.xpost_r, cmParams.xshift_r));
-    let xg = xlutLookup(1u, xwarp(x, cmParams.xpre_g, cmParams.xmix_g, cmParams.xfreq_g, cmParams.xpost_g, cmParams.xshift_g));
-    let xb = xlutLookup(2u, xwarp(x, cmParams.xpre_b, cmParams.xmix_b, cmParams.xfreq_b, cmParams.xpost_b, cmParams.xshift_b));
+    // ALL-Knobs: Shape/Pow/Shape1/Shape2 verschieben um (all-0.5), Mix/Freq/Shift/Pos/Mult addieren sich,
+    // Amount multipliziert sich. Neutral: 0.5 bzw. 0 bzw. 1.
+    let a = cmParams;
+    let xr = xlutLookup(0u, xwarp(x, a.xpre_r + a.xpre_all - 0.5, a.xmix_r + a.xmix_all, a.xfreq_r + a.xfreq_all, a.xpost_r + a.xpost_all - 0.5, a.xshift_r + a.xshift_all));
+    let xg = xlutLookup(1u, xwarp(x, a.xpre_g + a.xpre_all - 0.5, a.xmix_g + a.xmix_all, a.xfreq_g + a.xfreq_all, a.xpost_g + a.xpost_all - 0.5, a.xshift_g + a.xshift_all));
+    let xb = xlutLookup(2u, xwarp(x, a.xpre_b + a.xpre_all - 0.5, a.xmix_b + a.xmix_all, a.xfreq_b + a.xfreq_all, a.xpost_b + a.xpost_all - 0.5, a.xshift_b + a.xshift_all));
 
-    let r = primcolmap2(xr, cmParams.amount_r, cmParams.shape_r, cmParams.pow_r, cmParams.pos_r, cmParams.mult_r, cmParams.phaseShift);
-    let g = primcolmap2(xg, cmParams.amount_g, cmParams.shape_g, cmParams.pow_g, cmParams.pos_g, cmParams.mult_g, cmParams.phaseShift);
-    let b = primcolmap2(xb, cmParams.amount_b, cmParams.shape_b, cmParams.pow_b, cmParams.pos_b, cmParams.mult_b, cmParams.phaseShift);
-
+    let r = primcolmap2(xr, a.amount_r * a.amount_all, clamp(a.shape_r + a.shape_all - 0.5, 0.0, 1.0), clamp(a.pow_r + a.pow_all - 0.5, 0.0, 1.0), a.pos_r + a.pos_all, a.mult_r + a.mult_all, a.phaseShift);
+    let g = primcolmap2(xg, a.amount_g * a.amount_all, clamp(a.shape_g + a.shape_all - 0.5, 0.0, 1.0), clamp(a.pow_g + a.pow_all - 0.5, 0.0, 1.0), a.pos_g + a.pos_all, a.mult_g + a.mult_all, a.phaseShift);
+    let b = primcolmap2(xb, a.amount_b * a.amount_all, clamp(a.shape_b + a.shape_all - 0.5, 0.0, 1.0), clamp(a.pow_b + a.pow_all - 0.5, 0.0, 1.0), a.pos_b + a.pos_all, a.mult_b + a.mult_all, a.phaseShift);
 textureStore(
     cmTexWrite,
     vec2<i32>(i32(gid.x), 0),
