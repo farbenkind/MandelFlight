@@ -13,11 +13,11 @@
         <canvas id="plot" width="600" height="600"></canvas>
 
         <div id="controls">
-            <select id="fnSelect"></select>
-            <div id="knobLabel"></div>
-            <div class="knob" id="knob"></div>
+            <div id="stages"></div>
+            <button id="addStage" class="add">+ Stufe</button>
+            <label><input type="checkbox" id="showSteps" checked> Zwischenschritte zeigen</label>
             <div id="readout"></div>
-            <div id="hint">Knob: ziehen oder Mausrad, Doppelklick = Reset. Maus ueber dem Plot zeigt f(x).</div>
+            <div id="hint">Kette: x &rarr; Stufe 1 &rarr; Stufe 2 &hellip; Rot = Ergebnis. Knob: ziehen / Mausrad, Doppelklick = Reset. Zwischen den Stufen wird auf 0..1 geklemmt.</div>
         </div>
     </div>
 
