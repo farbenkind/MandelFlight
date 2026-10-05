@@ -24,6 +24,4 @@ dist-ssr
 *.sw?
 
 **/target/
-
-# Local Netlify folder
-.netlify
+.wrangler

@@ -1,0 +1,2 @@
+/projekte/:name /src/projekte/:name/index.html 200
+/projekte/:name/ /src/projekte/:name/index.html 200

@@ -1,6 +1,6 @@
 import { resolve } from 'node:path'
 
-// Spiegelt die Rewrite-Regel aus netlify.toml für dev/preview
+// Spiegelt die Rewrite-Regel aus public/_redirects für dev/preview
 function rewrite(req, _res, next) {
   const m = /^\/projekte\/([\w-]+)\/?(\?.*)?$/.exec(req.url)
   if (m) req.url = `/src/projekte/${m[1]}/index.html`
