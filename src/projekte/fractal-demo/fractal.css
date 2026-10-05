@@ -59,13 +59,13 @@ html, body {
     gap: 10px;
 }
 
-#xCmap {
+#miscCmap, #xCmap {
     display: inline-flex;
     flex-direction: column;
     gap: 10px;
 }
 
-#xCmap, #primCmap, #secCmap {
+#xCmap, #primCmap, #miscCmap {
     background: #111;
     padding: 10px;
     border-radius: 10px;
