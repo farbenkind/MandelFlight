@@ -1,27 +1,8 @@
 import { createFractalRenderer } from "./fractal-renderer.js";
 import { startAudioInput } from "./audio-input.js";
+import { createColormapGpu } from "./colormap/colormap-gpu.js";
+import { pi, debug, fmod, symExp, log, clamp } from "./util.js";
 
-let dbg = false;
-
-const pi = Math.PI;
-
-const fmod = (x, m) => ((x % m) + m) % m;
-
-function myPow(base, exp) {
-    if (exp >= 0)
-        return Math.pow(base, exp);
-    return Math.pow(base, -1 / exp)
-}
-const symExp = (max) => Math.log2(max * max / (max - 1));
-
-function log(desc, val) {
-    if (dbg) {
-        console.log(desc, val);
-    }
-}
-function clamp(x, min, max) {
-    return x >= min ? (x < max ? x : max) : min;
-}
 
 
 
@@ -159,6 +140,14 @@ function packCMParams() {
 
         knobs["phaseShift"].cmValue,
         knobs["hueShift"].cmValue,
+
+        ...["xr", "xg", "xb"].flatMap(c => [
+            knobs[`prePow-${c}`].cmValue,
+            knobs[`waveMix-${c}`].cmValue,
+            knobs[`waveFreq-${c}`].cmValue,
+            knobs[`postPow-${c}`].cmValue,
+            knobs[`shift-${c}`].cmValue,
+        ]),
     ]);
 }
 
@@ -231,413 +220,15 @@ initKnobs();
 
 
 
-const cmEditorRenderCode = /*wgsl*/`
-struct VSOut {
-    @builtin(position) pos : vec4<f32>,
-    @location(0) uv : vec2<f32>,
-};
-
-@vertex
-fn cm_vs(@builtin(vertex_index) idx : u32) -> VSOut {
-    let pos = array<vec2<f32>, 3>(
-        vec2<f32>(-1.0, -1.0),
-        vec2<f32>( 3.0, -1.0),
-        vec2<f32>(-1.0,  3.0),
-    );
-
-    let p = pos[idx];
-    var out : VSOut;
-    out.pos = vec4<f32>(p, 0.0, 1.0);
-    out.uv  = (p + vec2<f32>(1.0, 1.0)) * 0.5;
-    return out;
-}
-
-// Preview: Colormap-Texture
-@group(0) @binding(0)
-var cmTexSample : texture_2d<f32>;
-
-// AA-Curve: 1D-Kurve als Texture
-@group(0) @binding(1)
-var curve1D : texture_2d<f32>;
-
-@fragment
-fn cm_fs(@location(0) uv : vec2<f32>) -> @location(0) vec4<f32> {
-    let x = i32(uv.x * 1023.0);
-    let color = textureLoad(cmTexSample, vec2<i32>(x, 0), 0);
-    return vec4<f32>(color.rgb, 1.0);
-}
-
-fn AAColor(colval : f32, y : f32) -> f32 {
-
-    let curveY = colval * 63.0;
-
-    let dy = abs(y - curveY);
-    let lineWidth = 1.0;
-    let aaWidth   = 1.0;
-
-    // Kern der Linie
-    if (dy < lineWidth) {
-        return 1.0;
-    }
-
-    // AA-Bereich
-    if (dy < lineWidth + aaWidth) {
-        return 1.0 - (dy - lineWidth) / aaWidth;
-    }
-
-    // Hintergrund = 0 → wird später mit Weiß gemischt
-    return 0.0;
-}
-
-@fragment
-fn cmAACurve_fs(@location(0) uv : vec2<f32>) -> @location(0) vec4<f32> {
-
-    let w = 1024.0;
-    let h = 63.0;
-
-    let x = i32(uv.x * w);
-    let y = f32(i32(uv.y * h));
-
-    let c = textureLoad(curve1D, vec2<i32>(x, 0), 0);
-
-    // AA für jede Farbe
-    let ar = AAColor(c.r, y);
-    let ag = AAColor(c.g, y);
-    let ab = AAColor(c.b, y);
-
-    let col = vec3<f32>(ar, ag, ab);
-
-    // Hintergrund weiß
-    let bg = vec3<f32>(1.0, 1.0, 1.0);
-
-    // Alpha = max der drei Kanäle → deckend, wo eine Kurve ist
-    let alpha = max(max(ar, ag), ab);
-
-    // Finales Mischen
-    let finl = mix(bg, col, alpha);
-
-    return vec4<f32>(finl, 1.0);
-}
-
-`;
-
-
-
-
-
-
-
-
-
-
-
-
-const cmComputeShaderCode = /*wgsl*/`
-struct CMParams {
-    amount_r : f32,
-    shape_r  : f32,
-    pow_r    : f32,
-    pos_r    : f32,
-    mult_r   : f32,
-
-    amount_g : f32,
-    shape_g  : f32,
-    pow_g    : f32,
-    pos_g    : f32,
-    mult_g   : f32,
-
-    amount_b : f32,
-    shape_b  : f32,
-    pow_b    : f32,
-    pos_b    : f32,
-    mult_b   : f32,
-
-    phaseShift : f32,
-    hueShift : f32,
-};
-
-@group(0) @binding(0)
-var<uniform> cmParams : CMParams;
-
-@group(0) @binding(1)
-var cmTexWrite : texture_storage_2d<rgba8unorm, write>;
-
-@group(0) @binding(2)
-var curve1DWrite : texture_storage_2d<rgba8unorm, write>;
-
-const pi2 = 6.283185307179586476925286766559;
-const small = 1e-5;
-
-fn logb(x: f32, base: f32) -> f32 {
-    return log(x) / log(base);
-}
-
-fn sympow(base :f32, exp:f32) -> f32 {
-    let b = clamp(base, 0, 1);
-    var e = exp;
-    if (e < 1e-9) { e = 1e-9;}
-    if (exp<1) {
-        return f32(1-pow(1-b,1/e));
-    }
-    else {
-        return f32(pow(b,e));
-    }
-}
-fn sympowknob(base: f32, knob: f32, mult: f32) -> f32 {
-
-    var exp_1 = pow(knob, logb(mult,2)) * mult;
-
-    
-    if (exp_1 < 1) {
-        exp_1 = pow(knob, logb(mult/100,2)) * mult/100;
-        return 1-pow(1-base, 1/exp_1);
-    }
-    else {
-        return pow(base, exp_1);
-    }
-}
-fn powknob(base: f32, knob: f32, mult: f32) -> f32 {
-        
-    var exp_1 = pow(knob, logb(mult,2)) * mult;
-    if ( exp_1 < 1) {
-        exp_1 = pow(pow(knob*2,knob*1.1/10)/2,logb(mult,2))*mult;
-    }
-
-    exp_1 = pow(pow(knob*2,(knob+.1)/1.1)/2,logb(mult,2))*mult;
-    return pow(base, exp_1);
-    
-
-}
-fn shapeWave(t : f32, shape : f32) -> f32 {
-    let s = max(0.001, shape * 20.0);
-    return 0.5 + 0.5 * tanh(cos(t) * s);
-}
-fn powerWave(t: f32, shape: f32) -> f32 {
-    let c = 0.5 + 0.5 * cos(t);
-    if (shape > 0.5) {
-        return pow(c, 1.0 + (shape - 0.5) * 50.0);
-    }
-    return 1.0 - pow(1.0 - c, 1.0 + (0.5 - shape) * 50.0);
-}
-
-fn primcolmap1(x: f32, amount: f32, power: f32, pos: f32, mult: f32, phaseShift: f32) -> f32 {
-    let t = (x * mult * 20.0 - pos - phaseShift) * pi2;
-    let c = 0.5 + small + (0.5-small) * cos(t);
-    return amount * sympowknob(c, power, 10000.0);
-}
-fn primcolmap2(x: f32, amount: f32, shape:f32, power: f32, pos: f32, mult: f32, phaseShift: f32) -> f32 {
-    let t = (x * mult * 20.0 - pos - phaseShift) * pi2;
-    var c = small+(1-small)*powerWave(t,shape);
-    //ec = powerWave(t,shape);
-    return amount * sympowknob(c, power, 10000.0);
-}
-
-@compute @workgroup_size(64)
-fn cm_main(@builtin(global_invocation_id) gid : vec3<u32>) {
-    if (gid.x >= 1024u) { return; }
-
-    let x = f32(gid.x) / 1024.0;
-
-    let r = primcolmap2(x, cmParams.amount_r, cmParams.shape_r, cmParams.pow_r, cmParams.pos_r, cmParams.mult_r, cmParams.phaseShift);
-    let g = primcolmap2(x, cmParams.amount_g, cmParams.shape_g, cmParams.pow_g, cmParams.pos_g, cmParams.mult_g, cmParams.phaseShift);
-    let b = primcolmap2(x, cmParams.amount_b, cmParams.shape_b, cmParams.pow_b, cmParams.pos_b, cmParams.mult_b, cmParams.phaseShift);
-
-textureStore(
-    cmTexWrite,
-    vec2<i32>(i32(gid.x), 0),
-    vec4<f32>(r, g, b, 1.0)
-);
-
-    // 1D-Kurve: nur r-Kanal als Kurve
-    textureStore(
-        curve1DWrite,
-        vec2<i32>(i32(gid.x), 0),
-        vec4<f32>(r, g, b, 1.0)
-    );
-}
-`;
-
-
-
-
-
-
-
-
-
-
-const cmEditorRenderModule = device.createShaderModule({
-    label: "ColorMap Render Shader",
-    code: cmEditorRenderCode,
-});
-
-const cmComputeModule = device.createShaderModule({
-    label: "ColorMap Compute Shader",
-    code: cmComputeShaderCode,
-});
-
-const CMAP_Pipeline = device.createRenderPipeline({
-    label: "ColorMap Preview Pipeline",
-    layout: "auto",
-    vertex: {
-        module: cmEditorRenderModule,
-        entryPoint: "cm_vs",
-        buffers: [],
-    },
-    fragment: {
-        module: cmEditorRenderModule,
-        entryPoint: "cm_fs",
-        targets: [{ format }],
-    },
-    primitive: { topology: "triangle-list" },
-});
-
-const AA_CURVE_Pipeline = device.createRenderPipeline({
-    label: "ColorMap AA Curve Pipeline",
-    layout: "auto",
-    vertex: {
-        module: cmEditorRenderModule,
-        entryPoint: "cm_vs",
-        buffers: [],
-    },
-    fragment: {
-        module: cmEditorRenderModule,
-        entryPoint: "cmAACurve_fs",
-        targets: [{ format }],
-    },
-    primitive: { topology: "triangle-list" },
-});
-
-
-const CMAP_COMPUTE_Pipeline = device.createComputePipeline({
-    label: "ColorMap Compute Pipeline",
-    layout: "auto",
-    compute: {
-        module: cmComputeModule,
-        entryPoint: "cm_main",
-    },
-});
-
-
-
-const CURVE_Texture = device.createTexture({
-    label: "Curve 1D Texture",
-    size: [cmSize, 3],
-    format: "rgba8unorm",
-    usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
-});
-
-
-const cmPreviewBindGroup = device.createBindGroup({
-    label: "ColorMap Preview BindGroup",
-    layout: CMAP_Pipeline.getBindGroupLayout(0),
-    entries: [
-        { binding: 0, resource: CMAP_Texture.createView() },      // cmTexSample
-    ],
-});
-
-
-const cmEditorAACurveBindGroup = device.createBindGroup({
-    label: "AA Curve BindGroup",
-    layout: AA_CURVE_Pipeline.getBindGroupLayout(0),
-    entries: [
-        { binding: 1, resource: CURVE_Texture.createView() }, // curve1D
-    ],
-});
-
-const cmParamsBuffer = device.createBuffer({
-    size: 80,
-    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-});
-device.queue.writeBuffer(cmParamsBuffer, 0, packCMParams());
-
-const cmComputeBindGroup = device.createBindGroup({
-    label: "ColorMap Compute BindGroup",
-    layout: CMAP_COMPUTE_Pipeline.getBindGroupLayout(0),
-    entries: [
-        { binding: 0, resource: { buffer: cmParamsBuffer } },
-        { binding: 1, resource: CMAP_Texture.createView() },
-        { binding: 2, resource: CURVE_Texture.createView() },
-    ],
-});
-
-function runCMComputePass() {
-    const encoder = device.createCommandEncoder({ label: "ColorMap Compute Encoder" });
-    const pass = encoder.beginComputePass();
-    pass.setPipeline(CMAP_COMPUTE_Pipeline);
-    pass.setBindGroup(0, cmComputeBindGroup);
-    pass.dispatchWorkgroups(Math.ceil(cmSize / 64));
-    pass.end();
-    device.queue.submit([encoder.finish()]);
-}
-// ===============================
-//  Colormap Preview Canvas
-// ===============================
-const cmCanvas = document.getElementById("cmCanvas");
-const cmContext = cmCanvas.getContext("webgpu");
-
-cmCanvas.width = 1024;
-cmCanvas.height = 64;
-
-cmContext.configure({
+const colormapGpu = createColormapGpu({
     device,
     format,
-    alphaMode: "premultiplied",
+    colormapTexture: CMAP_Texture,
+    cmSize,
+    previewCanvas: document.getElementById("cmCanvas"),
+    curveCanvas: document.getElementById("curveCanvas"),
+    paramCount: packCMParams().length,
 });
-
-
-// ===============================
-//  AA Curve Canvas
-// ===============================
-const cmAACurveCanvas = document.getElementById("curveCanvas");
-const cmAACurveContext = cmAACurveCanvas.getContext("webgpu");
-
-cmAACurveCanvas.width = 1024;
-cmAACurveCanvas.height = 64;   // gleiche Höhe wie Curve-Preview
-
-cmAACurveContext.configure({
-    device,
-    format,
-    alphaMode: "premultiplied",
-});
-
-function renderCMPreview() {
-    const encoder = device.createCommandEncoder({ label: "ColorMap Preview Encoder" });
-    const pass = encoder.beginRenderPass({
-        colorAttachments: [{
-            view: cmContext.getCurrentTexture().createView(),
-            loadOp: "clear",
-            storeOp: "store",
-            clearValue: { r: 0, g: 0, b: 0, a: 1 },
-        }],
-    });
-
-    pass.setPipeline(CMAP_Pipeline);
-    pass.setBindGroup(0, cmPreviewBindGroup);
-    pass.draw(3);
-    pass.end();
-
-    device.queue.submit([encoder.finish()]);
-}
-
-function renderEditorAACurve() {
-    const encoder = device.createCommandEncoder({ label: "ColorMap AA Curve Encoder" });
-    const pass = encoder.beginRenderPass({
-        colorAttachments: [{
-            view: cmAACurveContext.getCurrentTexture().createView(),
-            loadOp: "clear",
-            storeOp: "store",
-            clearValue: { r: 1, g: 1, b: 1, a: 1 },
-        }],
-    });
-
-    pass.setPipeline(AA_CURVE_Pipeline);
-    pass.setBindGroup(0, cmEditorAACurveBindGroup);
-    pass.draw(3);
-    pass.end();
-
-    device.queue.submit([encoder.finish()]);
-}
 
 
 
@@ -1369,10 +960,7 @@ function updateCMEditor() {
     }
 
     // 6. GPU-Pipeline aktualisieren
-    device.queue.writeBuffer(cmParamsBuffer, 0, packCMParams());
-    runCMComputePass();
-    renderCMPreview();
-    renderEditorAACurve();
+    colormapGpu.update(packCMParams());
     fractalRenderer.runCompute();
 
 }
@@ -1386,7 +974,7 @@ startAudioInput(({ bass, mid, tre }) => {
     window.treBeat = tre;
     log("bassBeat", bass);
     updateCMEditor();
-    dbg = false;
+    debug.on = false;
 }).catch((error) => {
     console.error("Audio input could not be started:", error);
 });
@@ -1708,7 +1296,7 @@ window.addEventListener("keydown", ev => {
         editorAudioReact ^= 1;
     }
     if (ev.key === "d") {
-        dbg = true;
+        debug.on = true;
     }
     if (ev.key === "Escape") {
         document.getElementById("modOverlay").classList.add("hidden");
@@ -1724,9 +1312,7 @@ document.querySelectorAll("button").forEach(b => {
 console.log("knobs:", knobs);
 console.log("cmParams initial:", packCMParams());
 
-runCMComputePass();
-renderCMPreview();
-renderEditorAACurve();
+colormapGpu.update(packCMParams());
 fractalRenderer.runCompute();      // Fraktal einmal initial berechnen
 fractalRenderer.render();          // und anzeigen
 

@@ -56,7 +56,13 @@ html, body {
     gap: 10px;
 }
 
-#primCmap, #secCmap {
+#xCmap {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#xCmap, #primCmap, #secCmap {
     background: #111;
     padding: 10px;
     border-radius: 10px;
@@ -65,7 +71,7 @@ html, body {
 }
 
 
-#channels {
+#channels, #xchannels {
     display: inline-flex;   /* WICHTIG */
     flex-direction: row; /* damit die knob-rows untereinander bleiben */
     gap: 10px;
