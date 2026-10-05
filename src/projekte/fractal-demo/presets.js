@@ -2,7 +2,7 @@ import { knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
 import { openYesNo, openAlert } from "./ui/dialogs.js";
 import { listPresets, loadPreset, saveLocal, deleteLocal, saveRemote, deleteRemote } from "./preset-store.js";
 
-export function createPresets({ fractalRenderer, packCMParams }) {
+export function createPresets({ fractalRenderer, packCMParams, xlutUI }) {
     let popupOpen = false;
     //          1. Preset‑Struktur (sauber & cloud‑ready)
     function buildPreset(name) {
@@ -23,6 +23,7 @@ export function createPresets({ fractalRenderer, packCMParams }) {
                 mid: window.midBeat,
                 tre: window.treBeat
             },
+            xlut: xlutUI.getChains(),
             version: 1
         };
     }
@@ -106,6 +107,7 @@ export function createPresets({ fractalRenderer, packCMParams }) {
         // CM Editor
         //Object.assign(knobs, preset.knobs);
         Object.assign(knobs, deserializeKnobs(preset.knobs));
+        xlutUI.setChains(preset.xlut);
 
         presetPopup.classList.add("hidden");
         popupOpen = false;

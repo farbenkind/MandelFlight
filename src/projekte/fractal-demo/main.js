@@ -103,7 +103,7 @@ const colormapGpu = createColormapGpu({
     paramCount: packCMParams().length,
 });
 
-createXlutUI({
+const xlutUI = createXlutUI({
     root: document.getElementById("xlutBar"),
     cmSize,
     setLut: colormapGpu.setLut,
@@ -269,7 +269,7 @@ startAudioInput(({ bass, mid, tre }) => {
 //
 ///////////////////////////////////////////////////////////
 
-const presets = createPresets({ fractalRenderer, packCMParams });
+const presets = createPresets({ fractalRenderer, packCMParams, xlutUI });
 
 
 
