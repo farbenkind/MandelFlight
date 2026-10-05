@@ -8,7 +8,7 @@ import { timingSafeEqual } from "node:crypto";
 //   PUT    /api/presets/:app/:name    -> speichert den JSON-Body
 //   DELETE /api/presets/:app/:name
 
-const APPS = new Set(["fractal", "plotter"]);
+const APPS = new Set(["fractal"]);
 const NAME_RE = /^[\p{L}\p{N} _.\-+()]{1,64}$/u;
 const MAX_BYTES = 200_000;
 
