@@ -43,8 +43,6 @@ const primAll = {
         knob("pow-all", "Pow", 0.5, "pow_all"),
         knob("pos-all", "Pos", 0, "pos_all"),
         knob("mult-all", "Mult", 0, "mult_all"),
-        knob("phaseShift", "phaseShift", 0, "phaseShift"),
-        knob("hueShift", "hueShift", 0, "hueShift"),
     ],
 };
 
@@ -80,6 +78,17 @@ export const cmapSections = [
             primChannel("b", "blue", 0.6),
             primAll,
         ],
+    },
+    {
+        id: "miscCmap",
+        containerId: "miscchannels",
+        panels: [{
+            color: "all",
+            knobs: [
+                knob("phaseShift", "phaseShift", 0, "phaseShift"),
+                knob("hueShift", "hueShift", 0, "hueShift"),
+            ],
+        }],
     },
 ];
 

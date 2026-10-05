@@ -74,7 +74,7 @@ html, body {
 }
 
 
-#channels, #xchannels {
+#channels, #xchannels, #miscchannels {
     display: inline-flex;   /* WICHTIG */
     flex-direction: row; /* damit die knob-rows untereinander bleiben */
     gap: 10px;
