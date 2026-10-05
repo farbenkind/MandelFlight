@@ -79,6 +79,15 @@ export function createColormapGpu({ device, format, colormapTexture, cmSize, pre
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
+    // xCmap-LUTs: 3 Kanaele x cmSize Werte, initial Identitaet
+    const lutData = new Float32Array(3 * cmSize);
+    for (let c = 0; c < 3; c++) for (let i = 0; i < cmSize; i++) lutData[c * cmSize + i] = i / cmSize;
+    const lutBuffer = device.createBuffer({
+        size: lutData.byteLength,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    device.queue.writeBuffer(lutBuffer, 0, lutData);
+
     const previewBindGroup = device.createBindGroup({
         label: "ColorMap Preview BindGroup",
         layout: previewPipeline.getBindGroupLayout(0),
@@ -96,6 +105,7 @@ export function createColormapGpu({ device, format, colormapTexture, cmSize, pre
             { binding: 0, resource: { buffer: paramsBuffer } },
             { binding: 1, resource: colormapTexture.createView() },
             { binding: 2, resource: curveTexture.createView() },
+            { binding: 3, resource: { buffer: lutBuffer } },
         ],
     });
 
@@ -130,5 +140,11 @@ export function createColormapGpu({ device, format, colormapTexture, cmSize, pre
         renderCurve();
     }
 
-    return { update };
+    // channel 0..2 = R,G,B; lut = Float32Array(cmSize) oder null fuer Identitaet
+    function setLut(channel, lut) {
+        const data = lut ?? Float32Array.from({ length: cmSize }, (_, i) => i / cmSize);
+        device.queue.writeBuffer(lutBuffer, channel * cmSize * 4, data);
+    }
+
+    return { update, setLut };
 }

@@ -9,6 +9,10 @@ var cmTexWrite : texture_storage_2d<rgba8unorm, write>;
 @group(0) @binding(2)
 var curve1DWrite : texture_storage_2d<rgba8unorm, write>;
 
+// xCmap-LUTs aus dem Function Plotter: 3 Kanaele (R,G,B) x 1024 Werte, Identitaet wenn keine Kette gewaehlt
+@group(0) @binding(3)
+var<storage, read> xlut : array<f32>;
+
 const pi2 = 6.283185307179586476925286766559;
 const small = 1e-5;
 
@@ -84,15 +88,22 @@ fn xwarp(x: f32, prePow: f32, waveMix: f32, waveFreq: f32, postPow: f32, shift: 
     return sympowknob(clamp(mixed, 0.0, 1.0), max(postPow, 0.001), 100.0);
 }
 
+fn xlutLookup(channel: u32, x: f32) -> f32 {
+    let p = clamp(x, 0.0, 1.0) * 1023.0;
+    let i = u32(floor(p));
+    let j = min(i + 1u, 1023u);
+    return mix(xlut[channel * 1024u + i], xlut[channel * 1024u + j], fract(p));
+}
+
 @compute @workgroup_size(64)
 fn cm_main(@builtin(global_invocation_id) gid : vec3<u32>) {
     if (gid.x >= 1024u) { return; }
 
     let x = f32(gid.x) / 1024.0;
 
-    let xr = xwarp(x, cmParams.xpre_r, cmParams.xmix_r, cmParams.xfreq_r, cmParams.xpost_r, cmParams.xshift_r);
-    let xg = xwarp(x, cmParams.xpre_g, cmParams.xmix_g, cmParams.xfreq_g, cmParams.xpost_g, cmParams.xshift_g);
-    let xb = xwarp(x, cmParams.xpre_b, cmParams.xmix_b, cmParams.xfreq_b, cmParams.xpost_b, cmParams.xshift_b);
+    let xr = xlutLookup(0u, xwarp(x, cmParams.xpre_r, cmParams.xmix_r, cmParams.xfreq_r, cmParams.xpost_r, cmParams.xshift_r));
+    let xg = xlutLookup(1u, xwarp(x, cmParams.xpre_g, cmParams.xmix_g, cmParams.xfreq_g, cmParams.xpost_g, cmParams.xshift_g));
+    let xb = xlutLookup(2u, xwarp(x, cmParams.xpre_b, cmParams.xmix_b, cmParams.xfreq_b, cmParams.xpost_b, cmParams.xshift_b));
 
     let r = primcolmap2(xr, cmParams.amount_r, cmParams.shape_r, cmParams.pow_r, cmParams.pos_r, cmParams.mult_r, cmParams.phaseShift);
     let g = primcolmap2(xg, cmParams.amount_g, cmParams.shape_g, cmParams.pow_g, cmParams.pos_g, cmParams.mult_g, cmParams.phaseShift);

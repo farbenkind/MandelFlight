@@ -523,3 +523,6 @@ button.polish {
     align-self: center;
     gap: 20px;
 }
+
+#xlutBar { display: flex; gap: 12px; padding: 4px 0; font-size: 12px; color: #ddd; }
+#xlutBar select { background: #222; color: #eee; border: 1px solid #555; }

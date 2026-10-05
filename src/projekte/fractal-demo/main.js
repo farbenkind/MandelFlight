@@ -5,6 +5,7 @@ import { pi, debug, fmod, symExp, log, clamp } from "./util.js";
 import { ModMode, BaseMode, ModTransfrom, sliderMod, KnobState, knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
 import { cmapSections, packCMParams as packParams } from "./colormap/params.js";
 import { buildCmapUI } from "./ui/cmap-ui.js";
+import { createXlutUI } from "./ui/xlut-ui.js";
 import { initKnobs } from "./ui/knob-ui.js";
 import { createPresets } from "./presets.js";
 import { makeEnv, makeConst, makeOsc1, makeLinearTransform, makePowerTransform, makeSourceFromName } from "./modulation.js";
@@ -100,6 +101,13 @@ const colormapGpu = createColormapGpu({
     previewCanvas: document.getElementById("cmCanvas"),
     curveCanvas: document.getElementById("curveCanvas"),
     paramCount: packCMParams().length,
+});
+
+createXlutUI({
+    root: document.getElementById("xlutBar"),
+    cmSize,
+    setLut: colormapGpu.setLut,
+    onChange: () => colormapGpu.update(packCMParams()),
 });
 
 

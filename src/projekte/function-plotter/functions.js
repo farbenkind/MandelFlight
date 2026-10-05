@@ -66,3 +66,16 @@ export const functions = [
         f: x => x,
     },
 ];
+
+// Berechnet eine gespeicherte Kette ([{fn, k}]) als Tabelle mit n Werten fuer x = i/n.
+// Wird von der Demo als xCmap-LUT genutzt.
+export function bakeChain(stages, n) {
+    const chain = stages.map(s => ({ fn: functions.find(f => f.id === s.fn), k: s.k })).filter(s => s.fn);
+    const lut = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+        let v = i / n;
+        for (const s of chain) v = Math.min(1, Math.max(0, s.fn.f(Math.min(1, Math.max(0, v)), s.k)));
+        lut[i] = v;
+    }
+    return lut;
+}
