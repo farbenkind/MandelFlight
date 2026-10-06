@@ -26,10 +26,10 @@ Open the local URL printed by Vite. The demo is available at the root URL and at
 
 ## Server-side presets (Cloudflare Pages)
 
-1. Cloudflare dashboard: create a Workers KV namespace.
-2. Pages project (connect this repo): build command `npm run build`, output directory `dist`.
-3. Pages -> Settings -> Bindings: add a KV binding named `PRESETS`.
-4. Pages -> Settings -> Variables and Secrets: add the secret `PRESET_WRITE_KEY` (your write password).
+Live: https://mandelflight.pages.dev (Pages project mandelflight, KV binding PRESETS is set in `wrangler.toml`).
+
+Deploy: `npm run build` then `npx wrangler pages deploy dist --project-name mandelflight --branch main`.
+The write password is the Pages secret `PRESET_WRITE_KEY` (`npx wrangler pages secret put PRESET_WRITE_KEY --project-name mandelflight`).
 
 Reading is public; PUT/DELETE need the header `x-api-key: <PRESET_WRITE_KEY>`.
 Test locally with `npm run cf:dev` (serves on http://127.0.0.1:8788).
