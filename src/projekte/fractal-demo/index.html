@@ -11,12 +11,19 @@
 
 <body>
 
+    <button id="fullscreenBtn" class="button">Fullscreen</button>
+
     <!-- MOD OVERLAY -->
     <div id="modOverlay" class="hidden">
-        <div id="modUIContainer"></div>
-        <button id="modClose">Close</button>
+        <div id="modUIContainer">
+            <div id="modHeader" class="modHeader">
+                Modulation
+            </div>
+            <div id="modContent">
+            </div>
+            <div id="baseModeOptions"></div>
+        </div>
     </div>
-
     <!-- FRACTAL CANVAS -->
     <canvas id="fractalCanvas" width="1920" height="1080"></canvas>
 

@@ -1,7 +1,7 @@
 import { knobs, KnobState } from "../knob-state.js";
 import { openModOverlay } from "./mod-overlay.js";
 
-export function initKnobs() {
+export function initKnobs({ onChange } = {}) {
     document.querySelectorAll(".knob").forEach(knob => {
         const param = knob.dataset.param;
         const initValue = parseFloat(knob.dataset.init) || 0.0;
@@ -40,6 +40,7 @@ export function initKnobs() {
             knobs[param].cmValue = v;
 
             updateVisual();
+            onChange?.();
         });
     });
 
@@ -50,6 +51,7 @@ export function initKnobs() {
             ev.stopPropagation();
             knobs[param].modEnabled = !knobs[param].modEnabled;
             btn.classList.toggle("active", knobs[param].modEnabled);
+            onChange?.();
         });
     });
 }

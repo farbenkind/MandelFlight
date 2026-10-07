@@ -2,10 +2,6 @@ import { knobs, ModMode, BaseMode, ModTransfrom, sliderMod } from "../knob-state
 import { makeLinearTransform, makePowerTransform, makeSourceFromName } from "../modulation.js";
 import { symExp } from "../util.js";
 
-document.getElementById("modClose").addEventListener("click", () => {
-    document.getElementById("modOverlay").classList.add("hidden");
-});
-
 function createSourceSelector(mod, paramName) {
     const wrap = document.createElement("div");
     const sel = document.createElement("select");
@@ -329,8 +325,8 @@ function renderModUI(paramName) {
         div.append(addButton);
         return div;
     }
-    function createBaseModeOptions(knob) {
-        const div = document.createElement("div");
+    function BaseModeOptions(knob) {
+        const div = document.getElementById("baseModeOptions");
         div.innerHTML = "";
         div.style.background = "#456"
         div.style.padding = "20px 20px";
@@ -378,22 +374,32 @@ function renderModUI(paramName) {
 
         return div;
     }
-    const container = document.getElementById("modUIContainer");
-    container.innerHTML = "";
-    const modsDiv = document.createElement("div");
-    modsDiv.innerHTML = "";
-    modsDiv.classList.add("modsDiv");
+    const modUIContainerElement = document.getElementById("modUIContainer");
+    const modContentDiv = document.getElementById("modContent");
+    modContentDiv.innerHTML = "";
+    modContentDiv.classList.add("modsDiv");
     const mods = knobs[paramName].mods;
     console.log("slotanzahl", mods.length);
 
     for (const mod of mods) {
-        modsDiv.appendChild(createModSlotUI(mod, paramName));
-        modsDiv.appendChild(createModSlotAddDel(mod, paramName));
+        modContentDiv.appendChild(createModSlotUI(mod, paramName));
+        modContentDiv.appendChild(createModSlotAddDel(mod, paramName));
     }
-    container.append(modsDiv);
-    container.appendChild(createBaseModeOptions(knobs[paramName]));
-    //container.appendChild()
+    modUIContainerElement.append(modContentDiv);
+    modUIContainerElement.appendChild(BaseModeOptions(knobs[paramName]));
 
+    const header = document.querySelector(".modHeader");
+    header.textContent = paramName;
+
+    const pos =
+        JSON.parse(
+            localStorage.getItem("modOverlayPos")
+        );
+
+    if (pos) {
+        modUIContainerElement.style.left = pos.left;
+        modUIContainerElement.style.top = pos.top;
+    }
 }
 function makeDefaultModSlot() {
     return {

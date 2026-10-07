@@ -27,26 +27,28 @@ export function createXlutUI({ root, cmSize, setLut, onChange }) {
 
     function build() {
         const presets = readJSON(PRESETS_KEY, []);
-        root.replaceChildren();
-        CHANNELS.forEach((label, channel) => {
-            const row = document.createElement("label");
-            row.textContent = `${label} Kette: `;
-            const sel = document.createElement("select");
-            sel.append(new Option("(keine)", ""));
-            for (const p of presets) sel.append(new Option(p.name, p.name));
-            if (embedded[channel]) sel.append(new Option("(aus Preset)", "__embedded"));
-            sel.value = embedded[channel] ? "__embedded" : presets.some(p => p.name === selection[channel]) ? selection[channel] : "";
-            sel.addEventListener("change", () => {
-                if (sel.value === "__embedded") return;
-                embedded[channel] = null;
-                selection[channel] = sel.value || null;
-                localStorage.setItem(SEL_KEY, JSON.stringify(selection));
-                apply(channel);
-                onChange();
+        if (root) {
+            root.replaceChildren();
+            CHANNELS.forEach((label, channel) => {
+                const row = document.createElement("label");
+                row.textContent = `${label} Kette: `;
+                const sel = document.createElement("select");
+                sel.append(new Option("(keine)", ""));
+                for (const p of presets) sel.append(new Option(p.name, p.name));
+                if (embedded[channel]) sel.append(new Option("(aus Preset)", "__embedded"));
+                sel.value = embedded[channel] ? "__embedded" : presets.some(p => p.name === selection[channel]) ? selection[channel] : "";
+                sel.addEventListener("change", () => {
+                    if (sel.value === "__embedded") return;
+                    embedded[channel] = null;
+                    selection[channel] = sel.value || null;
+                    localStorage.setItem(SEL_KEY, JSON.stringify(selection));
+                    apply(channel);
+                    onChange();
+                });
+                row.append(sel);
+                root.append(row);
             });
-            row.append(sel);
-            root.append(row);
-        });
+        }
         CHANNELS.forEach((_, c) => apply(c));
     }
 
@@ -55,9 +57,9 @@ export function createXlutUI({ root, cmSize, setLut, onChange }) {
     build();
     return {
         getChains: () => CHANNELS.map((_, c) => chainOf(c)),
-        setChains(chains) {
+        setChains(chains, persist = true) {
             CHANNELS.forEach((_, c) => { embedded[c] = chains?.[c] ?? null; selection[c] = null; });
-            localStorage.setItem(SEL_KEY, JSON.stringify(selection));
+            if (persist) localStorage.setItem(SEL_KEY, JSON.stringify(selection));
             build();
             onChange();
         },

@@ -91,6 +91,39 @@ fn xlutLookup(channel: u32, x: f32) -> f32 {
     return mix(xlut[channel * 1024u + i], xlut[channel * 1024u + j], fract(p));
 }
 
+fn rgbToHsv(rgb: vec3<f32>) -> vec3<f32> {
+    let value = max(rgb.r, max(rgb.g, rgb.b));
+    let chroma = value - min(rgb.r, min(rgb.g, rgb.b));
+    if (chroma == 0.0) {
+        return vec3<f32>(0.0, 0.0, value);
+    }
+
+    var hue: f32;
+    if (value == rgb.r) {
+        hue = (rgb.g - rgb.b) / chroma;
+    } else if (value == rgb.g) {
+        hue = (rgb.b - rgb.r) / chroma + 2.0;
+    } else {
+        hue = (rgb.r - rgb.g) / chroma + 4.0;
+    }
+    return vec3<f32>(fract(hue / 6.0), chroma / value, value);
+}
+
+fn hsvToRgb(hsv: vec3<f32>) -> vec3<f32> {
+    let ramps = abs(fract(vec3<f32>(hsv.x) + vec3<f32>(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
+    return hsv.z * mix(vec3<f32>(1.0), clamp(ramps - 1.0, vec3<f32>(0.0), vec3<f32>(1.0)), hsv.y);
+}
+
+fn shiftHue(rgb: vec3<f32>, shift: f32) -> vec3<f32> {
+    let turns = fract(shift);
+    if (turns == 0.0) {
+        return rgb;
+    }
+    // Match the normalized texture's RGB range before rotating the hue.
+    let hsv = rgbToHsv(clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0)));
+    return hsvToRgb(vec3<f32>(fract(hsv.x + turns), hsv.y, hsv.z));
+}
+
 @compute @workgroup_size(64)
 fn cm_main(@builtin(global_invocation_id) gid : vec3<u32>) {
     if (gid.x >= 1024u) { return; }
@@ -107,16 +140,17 @@ fn cm_main(@builtin(global_invocation_id) gid : vec3<u32>) {
     let r = primcolmap2(xr, a.amount_r * a.amount_all, clamp(a.shape_r + a.shape_all - 0.5, 0.0, 1.0), clamp(a.pow_r + a.pow_all - 0.5, 0.0, 1.0), a.pos_r + a.pos_all, a.mult_r + a.mult_all, a.phaseShift);
     let g = primcolmap2(xg, a.amount_g * a.amount_all, clamp(a.shape_g + a.shape_all - 0.5, 0.0, 1.0), clamp(a.pow_g + a.pow_all - 0.5, 0.0, 1.0), a.pos_g + a.pos_all, a.mult_g + a.mult_all, a.phaseShift);
     let b = primcolmap2(xb, a.amount_b * a.amount_all, clamp(a.shape_b + a.shape_all - 0.5, 0.0, 1.0), clamp(a.pow_b + a.pow_all - 0.5, 0.0, 1.0), a.pos_b + a.pos_all, a.mult_b + a.mult_all, a.phaseShift);
-textureStore(
-    cmTexWrite,
-    vec2<i32>(i32(gid.x), 0),
-    vec4<f32>(r, g, b, 1.0)
-);
+    let color = shiftHue(vec3<f32>(r, g, b), a.hueShift);
+    textureStore(
+        cmTexWrite,
+        vec2<i32>(i32(gid.x), 0),
+        vec4<f32>(color, 1.0)
+    );
 
-    // 1D-Kurve: nur r-Kanal als Kurve
+    // Curves show the same final RGB values as the colormap.
     textureStore(
         curve1DWrite,
         vec2<i32>(i32(gid.x), 0),
-        vec4<f32>(r, g, b, 1.0)
+        vec4<f32>(color, 1.0)
     );
 }

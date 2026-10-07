@@ -23,6 +23,7 @@ export default {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
         'fractal-demo': resolve(import.meta.dirname,         'src/projekte/fractal-demo/index.html'),
+        'fractal-fullscreen': resolve(import.meta.dirname,    'src/projekte/fractal-demo/fullscreen.html'),
                 'function-plotter': resolve(import.meta.dirname, 'src/projekte/function-plotter/index.html')
               }
     }

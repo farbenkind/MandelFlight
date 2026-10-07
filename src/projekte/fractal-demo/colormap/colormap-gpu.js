@@ -35,30 +35,31 @@ function fullscreenPass(device, context, pipeline, bindGroup, label, clearValue)
 // Berechnet die Colormap per Compute-Shader in `colormapTexture` und zeichnet
 // die beiden Editor-Vorschauen. `paramCount` ist die Anzahl der f32-Werte der CMParams-Struct.
 export function createColormapGpu({ device, format, colormapTexture, cmSize, previewCanvas, curveCanvas, paramCount }) {
-    const renderModule = device.createShaderModule({
+    const hasPreview = Boolean(previewCanvas && curveCanvas);
+    const renderModule = hasPreview ? device.createShaderModule({
         label: "ColorMap Render Shader",
         code: cmEditorRenderCode,
-    });
+    }) : null;
     const computeModule = device.createShaderModule({
         label: "ColorMap Compute Shader",
         code: cmComputeShaderCode,
     });
 
-    const previewPipeline = device.createRenderPipeline({
+    const previewPipeline = hasPreview ? device.createRenderPipeline({
         label: "ColorMap Preview Pipeline",
         layout: "auto",
         vertex: { module: renderModule, entryPoint: "cm_vs", buffers: [] },
         fragment: { module: renderModule, entryPoint: "cm_fs", targets: [{ format }] },
         primitive: { topology: "triangle-list" },
-    });
+    }) : null;
 
-    const curvePipeline = device.createRenderPipeline({
+    const curvePipeline = hasPreview ? device.createRenderPipeline({
         label: "ColorMap AA Curve Pipeline",
         layout: "auto",
         vertex: { module: renderModule, entryPoint: "cm_vs", buffers: [] },
         fragment: { module: renderModule, entryPoint: "cmAACurve_fs", targets: [{ format }] },
         primitive: { topology: "triangle-list" },
-    });
+    }) : null;
 
     const computePipeline = device.createComputePipeline({
         label: "ColorMap Compute Pipeline",
@@ -88,16 +89,16 @@ export function createColormapGpu({ device, format, colormapTexture, cmSize, pre
     });
     device.queue.writeBuffer(lutBuffer, 0, lutData);
 
-    const previewBindGroup = device.createBindGroup({
+    const previewBindGroup = hasPreview ? device.createBindGroup({
         label: "ColorMap Preview BindGroup",
         layout: previewPipeline.getBindGroupLayout(0),
         entries: [{ binding: 0, resource: colormapTexture.createView() }],
-    });
-    const curveBindGroup = device.createBindGroup({
+    }) : null;
+    const curveBindGroup = hasPreview ? device.createBindGroup({
         label: "AA Curve BindGroup",
         layout: curvePipeline.getBindGroupLayout(0),
         entries: [{ binding: 1, resource: curveTexture.createView() }],
-    });
+    }) : null;
     const computeBindGroup = device.createBindGroup({
         label: "ColorMap Compute BindGroup",
         layout: computePipeline.getBindGroupLayout(0),
@@ -109,8 +110,8 @@ export function createColormapGpu({ device, format, colormapTexture, cmSize, pre
         ],
     });
 
-    const previewContext = configureCanvas(previewCanvas, device, format);
-    const curveContext = configureCanvas(curveCanvas, device, format);
+    const previewContext = hasPreview ? configureCanvas(previewCanvas, device, format) : null;
+    const curveContext = hasPreview ? configureCanvas(curveCanvas, device, format) : null;
 
     function runCompute() {
         const encoder = device.createCommandEncoder({ label: "ColorMap Compute Encoder" });
@@ -123,11 +124,13 @@ export function createColormapGpu({ device, format, colormapTexture, cmSize, pre
     }
 
     function renderPreview() {
+        if (!previewContext) return;
         fullscreenPass(device, previewContext, previewPipeline, previewBindGroup,
             "ColorMap Preview Encoder", { r: 0, g: 0, b: 0, a: 1 });
     }
 
     function renderCurve() {
+        if (!curveContext) return;
         fullscreenPass(device, curveContext, curvePipeline, curveBindGroup,
             "ColorMap AA Curve Encoder", { r: 1, g: 1, b: 1, a: 1 });
     }

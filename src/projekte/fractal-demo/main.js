@@ -3,13 +3,23 @@ import { startAudioInput } from "./audio-input.js";
 import { createColormapGpu } from "./colormap/colormap-gpu.js";
 import { pi, debug, fmod, symExp, log, clamp } from "./util.js";
 import { ModMode, BaseMode, ModTransfrom, sliderMod, KnobState, knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
-import { cmapSections, packCMParams as packParams } from "./colormap/params.js";
+import { cmapSections, cmapParams, packCMParams as packParams } from "./colormap/params.js";
 import { buildCmapUI } from "./ui/cmap-ui.js";
 import { createXlutUI } from "./ui/xlut-ui.js";
-import { initKnobs } from "./ui/knob-ui.js";
-import { createPresets } from "./presets.js";
+import { makeDraggable } from "./util.js";
 import { makeEnv, makeConst, makeOsc1, makeLinearTransform, makePowerTransform, makeSourceFromName } from "./modulation.js";
 
+const isEditor = Boolean(document.getElementById("cmKnobs"));
+const launchToken = new URLSearchParams(window.location.hash.slice(1)).get("state");
+const launchStateKey = launchToken ? `fractalFullscreenState:${launchToken}` : null;
+const fullscreenChannels = new Set();
+let launchState = null;
+if (launchStateKey) {
+    const serializedState = localStorage.getItem(launchStateKey);
+    if (serializedState) launchState = JSON.parse(serializedState);
+    localStorage.removeItem(launchStateKey);
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+}
 
 
 
@@ -17,7 +27,7 @@ import { makeEnv, makeConst, makeOsc1, makeLinearTransform, makePowerTransform, 
 
 
 /////////////////  Webgui Settup
-const canvas = document.querySelector("canvas");
+const canvas = document.getElementById("fractalCanvas");
 const adapter = await navigator.gpu.requestAdapter();
 const device = await adapter.requestDevice();
 
@@ -44,6 +54,7 @@ context.configure({
 ///////// /// FractalParams - uniforms
 const fractalRenderer = createFractalRenderer({ canvas, context, device, format });
 const { cmSize, colormapTexture: CMAP_Texture } = fractalRenderer;
+if (launchState?.fractalParams) fractalRenderer.setView(launchState.fractalParams);
 
 
 //////////////////////////////////////////////////////////////////
@@ -90,8 +101,28 @@ var editorAudioReact = true;
 
 const packCMParams = () => packParams(knobs);
 
-buildCmapUI(document.getElementById("cmKnobs"), cmapSections);
-initKnobs();
+function getSharedState() {
+    return {
+        fractalParams: fractalRenderer.getView(),
+        knobs: serializeKnobs(knobs),
+        xlut: xlutUI.getChains(),
+    };
+}
+
+function broadcastSharedState() {
+    if (!isEditor) return;
+    const message = { type: "state", state: getSharedState() };
+    for (const channel of fullscreenChannels) channel.postMessage(message);
+}
+
+if (isEditor) {
+    buildCmapUI(document.getElementById("cmKnobs"), cmapSections);
+    const { initKnobs } = await import("./ui/knob-ui.js");
+    initKnobs({ onChange: broadcastSharedState });
+} else {
+    for (const param of cmapParams) knobs[param.id] = new KnobState(param.init);
+}
+if (launchState?.knobs) Object.assign(knobs, deserializeKnobs(launchState.knobs));
 
 const colormapGpu = createColormapGpu({
     device,
@@ -107,21 +138,21 @@ const xlutUI = createXlutUI({
     root: document.getElementById("xlutBar"),
     cmSize,
     setLut: colormapGpu.setLut,
-    onChange: () => colormapGpu.update(packCMParams()),
+    onChange: () => {
+        colormapGpu.update(packCMParams());
+        broadcastSharedState();
+    },
 });
+if (launchState?.xlut) xlutUI.setChains(launchState.xlut, false);
 
+function initModWindow() {
 
-
-
-
-
-
-
-
-
-
-
-
+    makeDraggable(
+        document.getElementById("modUIContainer"),
+        document.getElementById("modHeader")
+    );
+}
+initModWindow();
 
 
 
@@ -156,6 +187,7 @@ function updateCMEditor() {
     for (const param in knobs) {
 
         const knob = knobs[param];
+        const knobElement = isEditor ? document.querySelector(`.knob[data-param="${param}"]`) : null;
 
         knob.modEnabled && log("", param);
 
@@ -231,36 +263,46 @@ function updateCMEditor() {
                 knob.cmValue = clamp(knob.liveValue + punchSum, 0, 1);
             }
 
-            if (!knob.knobPressed) {
+            if (knobElement && !knob.knobPressed) {
                 const v = liveVal;
-                const knob = document.querySelector(`.knob[data-param="${param}"]`);
                 const angle = v * 270 - 135;      // -135° bis +135°
-                knob.style.transform = `rotate(${angle}deg)`;
-                knob.style.setProperty("--needle-angle", angle + "deg");
+                knobElement.style.transform = `rotate(${angle}deg)`;
+                knobElement.style.setProperty("--needle-angle", angle + "deg");
 
             }
+        }
+
+        if (knobElement) {
+            const punchDelta = knob.cmValue - knob.liveValue;
+            knobElement.classList.toggle("punch-up", punchDelta > 0);
+            knobElement.classList.toggle("punch-down", punchDelta < 0);
+            knobElement.style.setProperty("--punch-offset", `${punchDelta * 270}deg`);
+            knobElement.style.setProperty("--punch-sweep", `${Math.abs(punchDelta * 270)}deg`);
         }
     }
 
     // 6. GPU-Pipeline aktualisieren
     colormapGpu.update(packCMParams());
     fractalRenderer.runCompute();
+    broadcastSharedState();
 
 }
 
 
 
 
-startAudioInput(({ bass, mid, tre }) => {
-    window.bassBeat = bass;
-    window.midBeat = mid;
-    window.treBeat = tre;
-    log("bassBeat", bass);
-    updateCMEditor();
-    debug.on = false;
-}).catch((error) => {
-    console.error("Audio input could not be started:", error);
-});
+if (isEditor) {
+    startAudioInput(({ bass, mid, tre }) => {
+        window.bassBeat = bass;
+        window.midBeat = mid;
+        window.treBeat = tre;
+        log("bassBeat", bass);
+        updateCMEditor();
+        debug.on = false;
+    }).catch((error) => {
+        console.error("Audio input could not be started:", error);
+    });
+}
 
 
 ///////////////////////////////////////////////////////////
@@ -269,7 +311,9 @@ startAudioInput(({ bass, mid, tre }) => {
 //
 ///////////////////////////////////////////////////////////
 
-const presets = createPresets({ fractalRenderer, packCMParams, xlutUI });
+const presets = isEditor
+    ? (await import("./presets.js")).createPresets({ fractalRenderer, packCMParams, xlutUI, onChange: broadcastSharedState })
+    : null;
 
 
 
@@ -308,8 +352,36 @@ function loadView() {
     fractalRenderer.setView({ ...view, maxIter: 1000 });
 }
 
+if (!isEditor && launchToken) {
+    const channel = new BroadcastChannel(`mandelflight-fullscreen:${launchToken}`);
+    channel.addEventListener("message", (event) => {
+        if (event.data?.type !== "state") return;
+        const state = event.data.state;
+        fractalRenderer.setView(state.fractalParams);
+        Object.assign(knobs, deserializeKnobs(state.knobs));
+        xlutUI.setChains(state.xlut, false);
+    });
+    channel.postMessage({ type: "ready" });
+    window.addEventListener("pagehide", () => channel.postMessage({ type: "closed" }), { once: true });
+}
+
 const editorOverlay = document.getElementById("cmOverlay");
 const editorCSS = document.getElementById("editorCSS");
+
+document.getElementById("fullscreenBtn")?.addEventListener("click", () => {
+    const token = crypto.randomUUID();
+    const channel = new BroadcastChannel(`mandelflight-fullscreen:${token}`);
+    channel.addEventListener("message", (event) => {
+        if (event.data?.type === "ready") channel.postMessage({ type: "state", state: getSharedState() });
+        if (event.data?.type === "closed") {
+            channel.close();
+            fullscreenChannels.delete(channel);
+        }
+    });
+    fullscreenChannels.add(channel);
+    localStorage.setItem(`fractalFullscreenState:${token}`, JSON.stringify(getSharedState()));
+    window.open(`/src/projekte/fractal-demo/fullscreen.html#state=${token}`, "_blank");
+});
 
 const keypressed = {
     'a': false,
@@ -323,6 +395,7 @@ window.addEventListener("keyup", ev => {
 
 
 window.addEventListener("keydown", ev => {
+    if (!isEditor) return;
     if (presets.isOpen()) return;
     if (ev.key === "s") presets.openSave();
     if (ev.key === "l") presets.openLoad();
@@ -354,7 +427,7 @@ colormapGpu.update(packCMParams());
 fractalRenderer.runCompute();      // Fraktal einmal initial berechnen
 fractalRenderer.render();          // und anzeigen
 
-loadView();
+if (!launchState?.fractalParams) loadView();
 //overlay.classList.toggle("hidden");
 //document.querySelector('.mod-toggle[data-param="pow-b"]').click();
 //document.querySelector('.mod-toggle[data-param="phaseShift"]').click();

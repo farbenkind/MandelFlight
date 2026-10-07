@@ -10,6 +10,7 @@ function buildKnob(k) {
     const knob = el("div", "knob");
     knob.dataset.param = k.id;
     knob.dataset.init = k.init;
+    knob.append(el("span", "knob-punch-arc"), el("span", "knob-punch-needle"));
     const toggle = el("button", "mod-toggle");
     toggle.dataset.param = k.id;
     wrapper.append(knob, toggle, el("div", "knob-label", { textContent: k.label }));
