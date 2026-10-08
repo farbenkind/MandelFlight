@@ -1,14 +1,34 @@
-# 1. In den Rust-ModCore-Ordner wechseln
-Set-Location "$PSScriptRoot\modcore"
+param([switch]$WatchBuild)
 
-# 2. WebAssembly bauen
-wasm-pack build --target web
+$ErrorActionPreference = "Stop"
+$mutex = New-Object System.Threading.Mutex($false, "Local\MandelFlight.ModCore.Build")
+$locked = $false
 
-# 3. Zurück in fractal-demo
-Set-Location "$PSScriptRoot"
+try {
+    try {
+        $locked = $mutex.WaitOne(120000)
+    } catch [System.Threading.AbandonedMutexException] {
+        $locked = $true
+        Write-Warning "Vorheriger ModCore-Build wurde abgebrochen; Build-Sperre uebernommen."
+    }
+    if (!$locked) { throw "ModCore-Build ist noch belegt. Bitte parallele Dev-Server pruefen." }
 
-# 4. Dateien aus modcore/pkg nach fractal-demo kopieren
-Copy-Item ".\modcore\pkg\modcore.js" -Destination ".\modcore.js" -Force
-Copy-Item ".\modcore\pkg\modcore_bg.wasm" -Destination ".\modcore_bg.wasm" -Force
+    Push-Location "$PSScriptRoot\modcore"
+    try {
+        $buildArgs = @("build", "--target", "web")
+        if ($WatchBuild) { $buildArgs += "--no-opt" }
+        & wasm-pack @buildArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "ModCore WASM Build fehlgeschlagen (Exitcode $LASTEXITCODE)."
+        }
 
-Write-Host "ModCore WASM erfolgreich gebaut und kopiert."
+        Copy-Item "$PSScriptRoot\modcore\pkg\modcore.js" -Destination "$PSScriptRoot\modcore.js" -Force
+        Copy-Item "$PSScriptRoot\modcore\pkg\modcore_bg.wasm" -Destination "$PSScriptRoot\modcore_bg.wasm" -Force
+        Write-Host "ModCore WASM erfolgreich gebaut und kopiert."
+    } finally {
+        Pop-Location
+    }
+} finally {
+    if ($locked) { $mutex.ReleaseMutex() }
+    $mutex.Dispose()
+}

@@ -7,7 +7,7 @@ import { cmapSections, cmapParams, packCMParams as packParams } from "./colormap
 import { buildCmapUI } from "./ui/cmap-ui.js";
 import { createXlutUI } from "./ui/xlut-ui.js";
 import { makeDraggable } from "./util.js";
-import { makeEnv, makeConst, makeOsc1, makeLinearTransform, makePowerTransform, makeSourceFromName } from "./modulation.js";
+import { makeEnv, makeConst, makeOsc1, makeLinearTransform, makePowerTransform, makeSourceFromName, createSourceContext } from "./modulation.js";
 
 const isEditor = Boolean(document.getElementById("cmKnobs"));
 const launchToken = new URLSearchParams(window.location.hash.slice(1)).get("state");
@@ -184,6 +184,7 @@ const slowEnv = makeEnv({ attack: .3, decay: 0.9 });
 */
 
 function updateCMEditor() {
+    const sourceContext = createSourceContext();
     for (const param in knobs) {
 
         const knob = knobs[param];
@@ -196,7 +197,7 @@ function updateCMEditor() {
         let baseMod = false;
 
         for (const mod of knob.mods) {
-            const srcVal = mod.sourceObj.update();
+            const srcVal = sourceContext.evaluate(mod.sourceObj);
             const tVal = mod.transformObj.apply(srcVal);
             const value = tVal * mod.amount;
 
@@ -292,11 +293,17 @@ function updateCMEditor() {
 
 
 if (isEditor) {
-    startAudioInput(({ bass, mid, tre }) => {
+    startAudioInput(({ bass, mid, tre, bpm, beat_phase, confidence }) => {
         window.bassBeat = bass;
         window.midBeat = mid;
         window.treBeat = tre;
-        log("bassBeat", bass);
+        window.bpm = bpm;
+        window.beatPhase = beat_phase;
+        window.beatConfidence = confidence;
+        console.log(
+            bpm.toFixed(1),
+            beat_phase.toFixed(2)
+        );
         updateCMEditor();
         debug.on = false;
     }).catch((error) => {

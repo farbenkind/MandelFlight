@@ -9,6 +9,16 @@ export function get_beats() {
 }
 
 /**
+ * @param {number} sample_rate
+ */
+export function set_sample_rate(sample_rate) {
+    const ret = wasm.set_sample_rate(sample_rate);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
  * @param {Float32Array} samples
  */
 export function update_audio(samples) {
@@ -197,6 +207,12 @@ function passStringToWasm0(arg, malloc, realloc) {
 
     WASM_VECTOR_LEN = offset;
     return ptr;
+}
+
+function takeFromExternrefTable0(idx) {
+    const value = wasm.__wbindgen_externrefs.get(idx);
+    wasm.__externref_table_dealloc(idx);
+    return value;
 }
 
 let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });

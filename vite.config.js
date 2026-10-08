@@ -1,4 +1,5 @@
 import { resolve } from 'node:path'
+import { modcoreWatch } from './scripts/modcore-watch.js'
 
 // Spiegelt die Rewrite-Regel aus public/_redirects für dev/preview
 function rewrite(req, _res, next) {
@@ -15,7 +16,7 @@ const projectRewrite = {
 
 export default {
   appType: 'mpa',
-  plugins: [projectRewrite],
+  plugins: [projectRewrite, modcoreWatch()],
   build: {
     // JS-Dateien (z. B. der AudioWorklet pcm-processor.js) nie als data:-URL einbetten
     assetsInlineLimit: (file) => (file.endsWith('.js') ? false : undefined),

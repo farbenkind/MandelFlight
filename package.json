@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "wasm:build": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File src\\projekte\\fractal-demo\\build.ps1",
     "preview": "vite preview",
     "cf:dev": "vite build && npx --yes wrangler@4 pages dev dist --kv PRESETS",
     "deploy": "npm run build && npx --yes wrangler@4 pages deploy dist --project-name mandelflight --branch main"

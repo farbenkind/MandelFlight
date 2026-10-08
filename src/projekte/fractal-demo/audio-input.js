@@ -1,9 +1,10 @@
-import init, { update_audio, get_beats } from "./modcore.js";
+import init, { update_audio, get_beats, set_sample_rate } from "./modcore.js";
 
 export async function startAudioInput(onBeatUpdate) {
     await init();
 
     const audioContext = new AudioContext();
+    set_sample_rate(audioContext.sampleRate);
     await audioContext.audioWorklet.addModule(new URL("./pcm-processor.js", import.meta.url));
 
     const pcmNode = new AudioWorkletNode(audioContext, "pcm-proc");

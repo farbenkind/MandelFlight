@@ -1,6 +1,6 @@
 import { fmod } from "./util.js";
 
-export function makeEnv({ name, source, attack, decay }) {
+export function makeEnv({ name = "env", source = "bassBeat", attack = 0.3, decay = 0.7 }) {
     return {
         type: "env",
         name,
@@ -8,12 +8,14 @@ export function makeEnv({ name, source, attack, decay }) {
         value: 0,
 
         params: {
-            attack: { min: 0, max: 1, exp: false, value: attack },
-            decay: { min: 0, max: 1, exp: false, value: decay }
+            ...(typeof source === "string" ? { source: sourceInputParam(source) } : {}),
+            attack: { ui: "slider", min: 0, max: 1, exp: false, value: attack },
+            decay: { ui: "slider", min: 0, max: 1, exp: false, value: decay }
         },
 
-        update() {
-            const input = this.source();
+        update(context = createSourceContext()) {
+            const input = typeof this.source === "function"
+                ? this.source() : context.input(this, "source");
             if (input > 0) this.value += this.params.attack.value;
             this.value *= this.params.decay.value;
             return this.value;
@@ -27,7 +29,7 @@ export function makeConst({ name, value }) {
         value: 0,
 
         params: {
-            value: { min: -1, max: 1, exp: false, value: value },
+            value: { ui: "slider", min: -1, max: 1, exp: false, value: value },
         },
 
         update() {
@@ -46,8 +48,8 @@ export function makeOsc1({ name, freq, shape }) {
         phase: 0,
 
         params: {
-            freq: { min: 1 / 3600, max: 5, exp: true, value: freq },
-            shape: { min: -1.0, max: 1, exp: false, value: shape },
+            freq: { ui: "slider", min: 1 / 3600, max: 5, exp: true, value: freq },
+            shape: { ui: "slider", min: -1.0, max: 1, exp: false, value: shape },
         },
 
         update() {
@@ -81,8 +83,8 @@ export function makeLinearTransform({ slope = 1 / 2, bias = 0 }) {
         type: "linear",
         name: "linear",
         params: {
-            slope: { min: -1, max: 1, exp: false, value: slope },
-            bias: { min: -1, max: 1, exp: false, value: bias }
+            slope: { ui: "slider", min: -1, max: 1, exp: false, value: slope },
+            bias: { ui: "slider", min: -1, max: 1, exp: false, value: bias }
         },
 
         apply(x) {
@@ -97,7 +99,7 @@ export function makePowerTransform({ exponent = 1 }) {
         type: "power",
         name: "power",
         params: {
-            exponent: { min: 1 / 5, max: 5, exp: true, value: exponent },
+            exponent: { ui: "slider", min: 1 / 5, max: 5, exp: true, value: exponent },
         },
 
         apply(x) {
@@ -105,76 +107,146 @@ export function makePowerTransform({ exponent = 1 }) {
         }
     }
 }
+export const sourceRegistry = new Map();
+export const transformRegistry = new Map([
+    ["linear", { label: "Linear", initialParams: { slope: 1, bias: 0 }, create: () => makeLinearTransform({}) }],
+    ["power", { label: "Power", create: () => makePowerTransform({}) }],
+]);
+
+for (const [band, signal] of [["bass", "bassBeat"], ["mid", "midBeat"], ["tre", "treBeat"]]) {
+    sourceRegistry.set(`${band}Env`, {
+        label: `${band}Env`, category: "Processor",
+        create: () => makeEnv({
+            name: `${band}Env`, source: signal, attack: 0.3, decay: 0.7,
+        }),
+    });
+    sourceRegistry.set(signal, {
+        label: signal, category: "Source",
+        create: () => ({ name: signal, type: "beat", params: {}, update: () => window[signal] }),
+    });
+}
+sourceRegistry.set("osc1", {
+    label: "osc1", category: "Generator",
+    create: () => makeOsc1({ name: "osc1", freq: 1, shape: 0 }),
+});
+sourceRegistry.set("const", {
+    label: "const", category: "Source",
+    create: () => makeConst({ name: "const", value: 0.1 }),
+});
+
+const beatClockSignals = {
+    beatPhase: phase => phase,
+    beatSaw: phase => phase,
+    beatTri: phase => 1 - Math.abs(2 * phase - 1),
+    beatPulse: phase => phase < 0.5 ? 1 : 0,
+    beatSin: phase => 0.5 - 0.5 * Math.cos(2 * Math.PI * phase),
+};
+
+for (const [name, signal] of Object.entries(beatClockSignals)) {
+    sourceRegistry.set(name, {
+        label: name, category: "Source",
+        create: () => ({
+            name, type: "clock", params: {},
+            update() {
+                const phase = window.beatPhase;
+                if (!Number.isFinite(phase)) {
+                    throw new Error("BeatClock phase is not initialized.");
+                }
+                return signal(fmod(phase, 1));
+            },
+        }),
+    });
+}
+
 export function makeSourceFromName(name) {
+    const entry = sourceRegistry.get(name);
+    if (!entry) throw new Error(`Unknown or unimplemented source: ${name}`);
+    return entry.create();
+}
 
-    // Audio‑Beats (globale Variablen)
-    if (name === "bassEnv") return makeEnv({
-        name: name,
-        source: () => window.bassBeat,
-        attack: 0.3,
-        decay: 0.7
-    });
+export function sourceInputParam(value) {
+    return {
+        ui: "select",
+        reference: "source",
+        value,
+        get options() {
+            return [...sourceRegistry].map(([name, entry]) => ({
+                label: entry.label ?? name, value: name,
+            }));
+        },
+    };
+}
 
-    if (name === "midEnv") return makeEnv({
-        name,
-        source: () => window.midBeat,
-        attack: 0.3,
-        decay: 0.7
-    });
+const sourceInputs = new WeakMap();
 
-    if (name === "treEnv") return makeEnv({
-        name,
-        source: () => window.treBeat,
-        attack: 0.3,
-        decay: 0.7
-    });
+// One context per modulation tick: shared instances advance only once.
+export function createSourceContext() {
+    const values = new Map();
+    const active = [];
+    return {
+        evaluate(source) {
+            if (values.has(source)) return values.get(source);
+            if (active.some(item => item === source || item.name === source.name)) {
+                throw new Error(`Cyclic source input: ${[...active.map(item => item.name), source.name].join(" -> ")}`);
+            }
+            active.push(source);
+            try {
+                const value = source.update(this);
+                values.set(source, value);
+                return value;
+            } finally {
+                active.pop();
+            }
+        },
+        input(owner, key) {
+            const param = owner.params[key];
+            if (param?.reference !== "source") throw new Error(`Not a source input: ${key}`);
+            if (!sourceRegistry.has(param.value)) throw new Error(`Unknown source input: ${param.value}`);
+            let inputs = sourceInputs.get(owner);
+            if (!inputs) {
+                inputs = new Map();
+                sourceInputs.set(owner, inputs);
+            }
+            let input = inputs.get(key);
+            if (!input || input.name !== param.value) {
+                input = { name: param.value, source: createSource(param.value) };
+                inputs.set(key, input);
+            }
+            return this.evaluate(input.source);
+        },
+    };
+}
 
-    // OSC‑Quellen
-    if (name === "osc1") return makeOsc1({
-        name,
-        freq: 1,
-        shape: 0,
-    });
+export function serializeParams(params) {
+    return Object.fromEntries(Object.entries(params).map(([key, param]) => [key, param.value]));
+}
 
-    if (name === "osc2") return makeOsc({
-        name,
-        freq: 0.4,
-        phase: 0
-    });
-
-    if (name === "const") return makeConst({
-        name,
-        value: .1,
-    });
-
-    // Random‑Quelle
-    if (name === "random") return makeRandom({
-        name,
-        speed: 0.3
-    });
-
-    if (name === "bassBeat") return { name, type: "beat", update: () => window.bassBeat, params: {} };
-    if (name === "midBeat") return { name, type: "beat", update: () => window.midBeat, params: {} };
-    if (name === "treBeat") return { name, type: "beat", update: () => window.treBeat, params: {} };
-    // Fallback
-    console.warn("Unknown source:", name);
-    return makeEnv({
-        name: "fallbackEnv",
-        source: () => 0,
-        attack: 0.0,
-        decay: 1.0
-    });
+export function restoreParams(params, saved = {}) {
+    for (const [key, savedParam] of Object.entries(saved)) {
+        const param = params[key];
+        if (!param) throw new Error(`Unknown parameter: ${key}`);
+        const value = savedParam !== null && typeof savedParam === "object"
+            ? savedParam.value : savedParam;
+        const valid = param.ui === "slider"
+            ? typeof value === "number" && Number.isFinite(value) && value >= param.min && value <= param.max
+            : param.ui === "select"
+                ? param.options.some(option => (typeof option === "object" ? option.value : option) === value)
+                : param.ui === "checkbox" && typeof value === "boolean";
+        if (!valid) throw new Error(`Invalid value for parameter: ${key}`);
+        param.value = value;
+    }
 }
 
 export function createSource(name, params) {
-    //const obj = sourceRegistry[name]();
     const obj = makeSourceFromName(name);
-    Object.assign(obj.params, params);
+    restoreParams(obj.params, params);
     return obj;
 }
+
 export function createTransform(name, params) {
-    //const obj = transformRegistry[name]();
-    const obj = makeLinearTransform(.5, .5);
-    Object.assign(obj.params, params);
+    const entry = transformRegistry.get(name);
+    if (!entry) throw new Error(`Unknown transform: ${name}`);
+    const obj = entry.create();
+    restoreParams(obj.params, params);
     return obj;
 }

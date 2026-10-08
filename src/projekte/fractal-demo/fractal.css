@@ -290,8 +290,8 @@ html, body {
 
 #modOverlay {
     position: fixed;
-    top: 100px;
-    left: 100px;
+    top: 24px;
+    left: 24px;
     width: auto;
     height: auto;
     background: transparent;
@@ -309,11 +309,12 @@ html, body {
     position: relative;
     background: #1a1a1a;
     color: #e0e0e0;
-    padding: 20px;
+    padding: 16px;
     border-radius: 12px;
-    min-width: 380px;
-    max-width: 520px;
-    max-height: 70vh;
+    box-sizing: border-box;
+    width: min(560px, calc(100vw - 48px));
+    min-width: 0;
+    max-height: calc(100vh - 48px);
     overflow-y: auto;
     box-shadow: 0 0 25px rgba(0,0,0,0.6);
     display: flex;
@@ -321,6 +322,7 @@ html, body {
     gap: 18px;
     font-family: sans-serif;
     pointer-events: auto;
+    border: 1px solid #0abaff55;
 }
 .modHeader {
     cursor: move;
@@ -329,6 +331,11 @@ html, body {
     border-radius: 8px;
 
     user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    color: #cceeff;
 }
 .mod-slot {
     background: #262626;
@@ -350,16 +357,14 @@ html, body {
     width: 100%;
 }
 
-.param-knobs {
+.param-knobs, .param-controls {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
 #modClose {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
+    position: static;
     padding: 8px 14px;
     background: #444;
     color: #fff;
@@ -370,6 +375,90 @@ html, body {
 }
 #modClose:hover {
     background: #666;
+}
+
+#modContent {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.mod-slot-heading, .param-control-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.mod-slot-heading h2 {
+    font-size: 15px;
+    margin: 0;
+    color: #cceeff;
+}
+
+.mod-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.mod-section h3 {
+    color: #7ccfee;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    margin: 0;
+}
+
+.param-control {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.param-control output {
+    color: #cceeff;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+}
+
+#modUIContainer select {
+    width: 100%;
+    box-sizing: border-box;
+    background: #151b22;
+    color: #e0e0e0;
+    border: 1px solid #427087;
+    border-radius: 6px;
+    padding: 7px;
+}
+
+#modUIContainer input {
+    accent-color: #0abaff;
+}
+
+.param-checkbox {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.param-control-error {
+    color: #ff8888;
+}
+
+#baseModeOptions {
+    padding: 14px;
+    background: #14242e;
+    border: 1px solid #0abaff44;
+    border-radius: 10px;
+}
+
+.mod-remove {
+    color: #ffbbbb;
+}
+
+.mod-add {
+    align-self: flex-start;
 }
 
 button.polish {

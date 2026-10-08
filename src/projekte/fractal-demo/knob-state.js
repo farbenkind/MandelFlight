@@ -1,4 +1,4 @@
-import { createSource, createTransform } from "./modulation.js";
+import { createSource, createTransform, serializeParams } from "./modulation.js";
 
 export const ModMode = {
     PUNCH: "punch",
@@ -53,9 +53,9 @@ export function serializeKnobs(knobs) {
                 amount: m.amount,
                 mode: m.mode,
                 source: m.sourceObj.name,      // z.B. "bassBeat", "midEnv", "const"
-                sourceParams: { ...m.sourceObj.params },
+                sourceParams: serializeParams(m.sourceObj.params),
                 transform: m.transformObj.name, // z.B. "scale", "curve"
-                transformParams: { ...m.transformObj.params },
+                transformParams: serializeParams(m.transformObj.params),
             })),
             mode: k.mode,
             bounceDir: k.bounceDir,

@@ -71,9 +71,14 @@ export function createPresets({ fractalRenderer, packCMParams, xlutUI, onChange 
             li.textContent = `${entry.remote ? "☁ " : "💾 "}${entry.name}`;
 
             li.onclick = async () => {
-                const preset = await loadPreset(entry);
-                if (preset) applyPreset(preset);
-                else await openAlert("Preset konnte nicht geladen werden.");
+                try {
+                    const preset = await loadPreset(entry);
+                    if (preset) applyPreset(preset);
+                    else openAlert("Preset konnte nicht geladen werden.");
+                } catch (error) {
+                    console.error("Preset konnte nicht geladen werden:", error);
+                    openAlert(error.message);
+                }
             };
 
             const del = document.createElement("button");
@@ -96,6 +101,7 @@ export function createPresets({ fractalRenderer, packCMParams, xlutUI, onChange 
         }
     }    //          8. Preset anwenden
     function applyPreset(preset) {
+        const restoredKnobs = deserializeKnobs(preset.knobs);
         // Fractal
         fractalRenderer.setView({
             centerX: preset.fractalParams.centerX,
@@ -106,7 +112,7 @@ export function createPresets({ fractalRenderer, packCMParams, xlutUI, onChange 
 
         // CM Editor
         //Object.assign(knobs, preset.knobs);
-        Object.assign(knobs, deserializeKnobs(preset.knobs));
+        Object.assign(knobs, restoredKnobs);
         xlutUI.setChains(preset.xlut);
         onChange?.();
 
