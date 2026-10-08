@@ -13,7 +13,12 @@ function buildKnob(k) {
     knob.append(el("span", "knob-punch-arc"), el("span", "knob-punch-needle"));
     const toggle = el("button", "mod-toggle");
     toggle.dataset.param = k.id;
-    wrapper.append(knob, toggle, el("div", "knob-label", { textContent: k.label }));
+    wrapper.append(
+        el("span", "knob-value", { textContent: k.init.toFixed(3) }),
+        knob,
+        el("div", "knob-label", { textContent: k.label }),
+        toggle,
+    );
     return wrapper;
 }
 

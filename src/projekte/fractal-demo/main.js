@@ -5,6 +5,7 @@ import { pi, debug, fmod, symExp, log, clamp } from "./util.js";
 import { ModMode, BaseMode, ModTransfrom, sliderMod, KnobState, knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
 import { cmapSections, cmapParams, packCMParams as packParams } from "./colormap/params.js";
 import { buildCmapUI } from "./ui/cmap-ui.js";
+import { updateKnobVisual } from "./ui/knob-visual.js";
 import { createXlutUI } from "./ui/xlut-ui.js";
 import { makeDraggable } from "./util.js";
 import { makeEnv, makeConst, makeOsc1, makeLinearTransform, makePowerTransform, makeSourceFromName, createSourceContext } from "./modulation.js";
@@ -118,11 +119,11 @@ function broadcastSharedState() {
 if (isEditor) {
     buildCmapUI(document.getElementById("cmKnobs"), cmapSections);
     const { initKnobs } = await import("./ui/knob-ui.js");
-    initKnobs({ onChange: broadcastSharedState });
+    initKnobs({ onChange: refreshCMEditor });
 } else {
     for (const param of cmapParams) knobs[param.id] = new KnobState(param.init);
 }
-if (launchState?.knobs) Object.assign(knobs, deserializeKnobs(launchState.knobs));
+if (launchState?.knobs) Object.assign(knobs, deserializeKnobs(launchState.knobs, cmapParams));
 
 const colormapGpu = createColormapGpu({
     device,
@@ -152,7 +153,7 @@ function initModWindow() {
         document.getElementById("modHeader")
     );
 }
-initModWindow();
+if (isEditor) initModWindow();
 
 
 
@@ -183,12 +184,23 @@ const fastEnv = makeEnv({ attack: .9, decay: .5 });
 const slowEnv = makeEnv({ attack: .3, decay: 0.9 });
 */
 
+function refreshCMEditor() {
+    if (isEditor) {
+        document.querySelectorAll(".knob").forEach(element => {
+            const state = knobs[element.dataset.param];
+            updateKnobVisual(element, state, { rotate: !state.knobPressed });
+        });
+    }
+    colormapGpu.update(packCMParams());
+    fractalRenderer.runCompute();
+    broadcastSharedState();
+}
+
 function updateCMEditor() {
     const sourceContext = createSourceContext();
     for (const param in knobs) {
 
         const knob = knobs[param];
-        const knobElement = isEditor ? document.querySelector(`.knob[data-param="${param}"]`) : null;
 
         knob.modEnabled && log("", param);
 
@@ -263,29 +275,11 @@ function updateCMEditor() {
                 // Punch-only: clamp
                 knob.cmValue = clamp(knob.liveValue + punchSum, 0, 1);
             }
-
-            if (knobElement && !knob.knobPressed) {
-                const v = liveVal;
-                const angle = v * 270 - 135;      // -135° bis +135°
-                knobElement.style.transform = `rotate(${angle}deg)`;
-                knobElement.style.setProperty("--needle-angle", angle + "deg");
-
-            }
-        }
-
-        if (knobElement) {
-            const punchDelta = knob.cmValue - knob.liveValue;
-            knobElement.classList.toggle("punch-up", punchDelta > 0);
-            knobElement.classList.toggle("punch-down", punchDelta < 0);
-            knobElement.style.setProperty("--punch-offset", `${punchDelta * 270}deg`);
-            knobElement.style.setProperty("--punch-sweep", `${Math.abs(punchDelta * 270)}deg`);
         }
     }
 
     // 6. GPU-Pipeline aktualisieren
-    colormapGpu.update(packCMParams());
-    fractalRenderer.runCompute();
-    broadcastSharedState();
+    refreshCMEditor();
 
 }
 
@@ -293,12 +287,13 @@ function updateCMEditor() {
 
 
 if (isEditor) {
-    startAudioInput(({ bass, mid, tre, bpm, beat_phase, confidence }) => {
+    startAudioInput(({ bass, mid, tre, bpm, beat_phase, beat_position, confidence }) => {
         window.bassBeat = bass;
         window.midBeat = mid;
         window.treBeat = tre;
         window.bpm = bpm;
         window.beatPhase = beat_phase;
+        window.beatPosition = beat_position;
         window.beatConfidence = confidence;
         console.log(
             bpm.toFixed(1),
@@ -319,7 +314,7 @@ if (isEditor) {
 ///////////////////////////////////////////////////////////
 
 const presets = isEditor
-    ? (await import("./presets.js")).createPresets({ fractalRenderer, packCMParams, xlutUI, onChange: broadcastSharedState })
+    ? (await import("./presets.js")).createPresets({ fractalRenderer, packCMParams, xlutUI, onChange: refreshCMEditor })
     : null;
 
 
@@ -365,7 +360,7 @@ if (!isEditor && launchToken) {
         if (event.data?.type !== "state") return;
         const state = event.data.state;
         fractalRenderer.setView(state.fractalParams);
-        Object.assign(knobs, deserializeKnobs(state.knobs));
+        Object.assign(knobs, deserializeKnobs(state.knobs, cmapParams));
         xlutUI.setChains(state.xlut, false);
     });
     channel.postMessage({ type: "ready" });
@@ -430,8 +425,7 @@ document.querySelectorAll("button").forEach(b => {
 console.log("knobs:", knobs);
 console.log("cmParams initial:", packCMParams());
 
-colormapGpu.update(packCMParams());
-fractalRenderer.runCompute();      // Fraktal einmal initial berechnen
+refreshCMEditor();
 fractalRenderer.render();          // und anzeigen
 
 if (!launchState?.fractalParams) loadView();

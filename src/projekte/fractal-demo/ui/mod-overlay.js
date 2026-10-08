@@ -169,9 +169,9 @@ function renderModUI(paramName) {
 
 function makeDefaultModSlot() {
     return {
-        sourceObj: createSource("const"),
+        sourceObj: createSource("beatTri"),
         transformObj: makeLinearTransform({}),
-        mode: ModMode.BASE,
+        mode: ModMode.PUNCH,
         amount: 1,
     };
 }

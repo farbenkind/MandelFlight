@@ -1,4 +1,5 @@
 import { fmod } from "./util.js";
+import { beatDivisions, dividedBeatPhase } from "./beat-divisions.js";
 
 export function makeEnv({ name = "env", source = "bassBeat", attack = 0.3, decay = 0.7 }) {
     return {
@@ -146,8 +147,17 @@ for (const [name, signal] of Object.entries(beatClockSignals)) {
     sourceRegistry.set(name, {
         label: name, category: "Source",
         create: () => ({
-            name, type: "clock", params: {},
+            name, type: "clock",
+            params: name === "beatPhase" ? {} : {
+                division: {
+                    ui: "select", label: "Division", value: "1/4",
+                    options: beatDivisions.map(({ value, label }) => ({ value, label })),
+                },
+            },
             update() {
+                if (name !== "beatPhase") {
+                    return signal(dividedBeatPhase(window.beatPosition, this.params.division.value));
+                }
                 const phase = window.beatPhase;
                 if (!Number.isFinite(phase)) {
                     throw new Error("BeatClock phase is not initialized.");

@@ -25,6 +25,7 @@ const warpChannel = (c, color) => {
     return {
         color,
         knobs: [
+            knob(`relax-x${c}`, `Relax X${C}`, 0, `xrelax_${c}`),
             knob(`prePow-x${c}`, `Shape1 X${C}`, 0.5, `xpre_${c}`),
             knob(`waveMix-x${c}`, `Mix X${C}`, 0, `xmix_${c}`),
             knob(`waveFreq-x${c}`, `Freq X${C}`, 0.1, `xfreq_${c}`),
@@ -49,6 +50,7 @@ const primAll = {
 const warpAll = {
     color: "all",
     knobs: [
+        knob("relax-xall", "Relax", 0, "xrelax_all"),
         knob("prePow-xall", "Shape1", 0.5, "xpre_all"),
         knob("waveMix-xall", "Mix", 0, "xmix_all"),
         knob("waveFreq-xall", "Freq", 0, "xfreq_all"),

@@ -58,6 +58,9 @@ html, body {
     flex-direction: row;   /* nebeneinander */
     align-items: flex-start;
     gap: 10px;             /* HIER kommt der Abstand */
+    min-height: 0;
+    overflow: auto;
+    padding: 8px;
 }
 
 #primCmap {
@@ -129,13 +132,18 @@ html, body {
 .knob-wrapper {
     position: relative;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
+    user-select: none;
 }
-.knob-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+
+.knob-label {
+    margin-top: 5px;
+    font-size: 11px;
+    line-height: 16px;
+    color: #cceeff;
+    white-space: nowrap;
 }
 
 .mod-toggle {
@@ -155,18 +163,19 @@ html, body {
     color: black;
 }
 
-/* Polished Serum Hover Label */
-.knob-label {
+.knob-value {
     position: absolute;
     top: -26px;
     left: 50%;
     transform: translateX(-50%) translateY(6px);
     font-family: 'Inter', sans-serif;
     font-size: 14px;
+    font-variant-numeric: tabular-nums;
     color: #cceeff;
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
+    z-index: 5;
 
     /* Polish */
     padding: 2px 6px; /* WICHTIG */
@@ -182,8 +191,8 @@ html, body {
 }
 
 /* Hover + Drag */
-.knob-wrapper:hover .knob-label,
-.knob-wrapper.dragging .knob-label {
+.knob-wrapper:has(.knob:hover) .knob-value,
+.knob-wrapper.dragging .knob-value {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
     animation: labelPulse 0.35s ease-out;
@@ -216,6 +225,7 @@ html, body {
         inset 0 0 10px #000;
     position: relative;
     cursor: pointer;
+    touch-action: none;
     transition: transform 0.05s linear, box-shadow 0.02s ease;
 }
 

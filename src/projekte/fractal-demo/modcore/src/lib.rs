@@ -19,6 +19,7 @@ struct BeatTracker {
     sample_rate: f32,
     bpm: f32,
     last_beat: Option<u64>,
+    beat_index: f64,
     has_tempo: bool,
     armed: bool,
     intervals: VecDeque<u64>,
@@ -30,6 +31,7 @@ impl BeatTracker {
             sample_rate,
             bpm: 120.0,
             last_beat: None,
+            beat_index: 0.0,
             has_tempo: false,
             armed: true,
             intervals: VecDeque::new(),
@@ -51,6 +53,12 @@ impl BeatTracker {
             if seconds < 0.2 {
                 return;
             }
+            // Keep bar divisions aligned across missed onsets and pauses.
+            self.beat_index += if self.has_tempo {
+                (seconds as f64 * self.bpm as f64 / 60.0).round().max(1.0)
+            } else {
+                1.0
+            };
             if seconds > 2.0 {
                 self.last_beat = Some(sample);
                 self.has_tempo = false;
@@ -80,6 +88,14 @@ impl BeatTracker {
                 let elapsed = (sample - last) as f32 / self.sample_rate;
                 (elapsed * self.bpm / 60.0).fract()
             }
+            None => 0.0,
+        }
+    }
+
+    fn position(&self, sample: u64) -> f64 {
+        match self.last_beat {
+            Some(last) => self.beat_index
+                + (sample - last) as f64 / self.sample_rate as f64 * self.bpm as f64 / 60.0,
             None => 0.0,
         }
     }
@@ -133,6 +149,7 @@ pub struct BeatData {
 
     pub bpm: f32,
     pub beat_phase: f32,
+    pub beat_position: f64,
     pub confidence: f32,
 }
 // ---------------------------------------------
@@ -255,6 +272,7 @@ pub fn get_beats() -> JsValue {
     let bpm = BEAT_TRACKER.with(|tracker| tracker.borrow().bpm);
     let beat_phase = get_beat_phase();
     let sample = SAMPLE_COUNTER.with(|counter| *counter.borrow());
+    let beat_position = BEAT_TRACKER.with(|tracker| tracker.borrow().position(sample));
     let confidence = BEAT_TRACKER.with(|tracker| tracker.borrow().confidence(sample));
 
     let data = BeatData {
@@ -264,6 +282,7 @@ pub fn get_beats() -> JsValue {
 
         bpm,
         beat_phase,
+        beat_position,
         confidence,
     };
     to_value(&data).unwrap()
@@ -280,6 +299,27 @@ mod tests {
     fn trigger(tracker: &mut BeatTracker, sample: u64) {
         tracker.update(0.0, sample);
         tracker.update(10.0, sample);
+    }
+
+    #[test]
+    fn beat_position_tracks_bars_and_missing_onsets() {
+        for rate in [44_100.0, 48_000.0] {
+            for bpm in [60.0, 120.0] {
+                let mut tracker = BeatTracker::new(rate);
+                assert_eq!(tracker.position(0), 0.0);
+                let interval = (rate * 60.0 / bpm) as u64;
+                for beat in 0..=16 {
+                    trigger(&mut tracker, beat * interval);
+                    assert!((tracker.position(beat * interval) - beat as f64).abs() < 1e-6);
+                    if beat > 0 {
+                        assert!((tracker.position(beat * interval + interval / 2) - beat as f64 - 0.5).abs() < 1e-6);
+                    }
+                }
+                assert!((tracker.position(19 * interval) - 19.0).abs() < 1e-6);
+                trigger(&mut tracker, 20 * interval);
+                assert!((tracker.position(20 * interval) - 20.0).abs() < 1e-6);
+            }
+        }
     }
 
     #[test]

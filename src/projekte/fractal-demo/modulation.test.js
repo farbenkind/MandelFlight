@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createSource, createTransform, restoreParams, serializeParams, sourceRegistry, createSourceContext, sourceInputParam, makeEnv } from "./modulation.js";
 import { KnobState, serializeKnobs, deserializeKnobs } from "./knob-state.js";
+import { beatDivisions, dividedBeatPhase } from "./beat-divisions.js";
 
 test("old preset metadata does not overwrite parameter definitions", () => {
     const source = createSource("bassEnv", {
@@ -43,7 +44,7 @@ test("every advertised source has a factory and declared controls", () => {
 
 test("clock sources follow global phase without independent state", () => {
     const previousWindow = globalThis.window;
-    globalThis.window = { beatPhase: 0 };
+    globalThis.window = { beatPhase: 0, beatPosition: 0 };
     try {
         const expected = {
             beatPhase: [0, 0.25, 0.5, 0.75, 0],
@@ -54,9 +55,14 @@ test("clock sources follow global phase without independent state", () => {
         };
         for (const [name, values] of Object.entries(expected)) {
             const source = createSource(name);
-            assert.deepEqual(source.params, {});
+            if (name === "beatPhase") assert.deepEqual(source.params, {});
+            else {
+                assert.equal(source.params.division.ui, "select");
+                assert.equal(source.params.division.value, "1/4");
+            }
             [0, 0.25, 0.5, 0.75, 1].forEach((phase, index) => {
                 window.beatPhase = phase;
+                window.beatPosition = phase;
                 assert.ok(Math.abs(source.update() - values[index]) < 1e-10);
             });
             const restored = createSource(name, serializeParams(source.params));
@@ -64,6 +70,40 @@ test("clock sources follow global phase without independent state", () => {
         }
         window.beatPhase = undefined;
         assert.throws(() => createSource("beatPhase").update(), /not initialized/);
+    } finally {
+        globalThis.window = previousWindow;
+    }
+});
+
+test("musical divisions use exact beat durations and survive presets", () => {
+    const expected = [16, 8, 4, 2, 1, 0.5, 0.25, 0.125,
+        3, 1.5, 0.75, 0.375, 0.1875,
+        4 / 3, 2 / 3, 1 / 3, 1 / 6, 1 / 12];
+    assert.equal(beatDivisions.length, 18);
+    beatDivisions.forEach((entry, index) => {
+        assert.equal(entry.beats, expected[index]);
+        for (const cycles of [0, 0.25, 0.5, 0.75, 1, 4, 16]) {
+            assert.ok(Math.abs(dividedBeatPhase(entry.beats * cycles, entry.value) - cycles % 1) < 1e-10);
+        }
+    });
+    const previousWindow = globalThis.window;
+    globalThis.window = { beatPosition: 3 };
+    try {
+        for (const name of ["beatSaw", "beatTri", "beatPulse", "beatSin"]) {
+            for (const entry of beatDivisions) {
+                const source = createSource(name, { division: entry.value });
+                const restored = createSource(name, serializeParams(source.params));
+                assert.equal(restored.params.division.value, entry.value);
+                assert.equal(restored.update(), source.update());
+            }
+            assert.equal(createSource(name, {}).params.division.value, "1/4");
+            assert.throws(() => createSource(name, { division: "1/7" }), /Invalid/);
+        }
+        assert.equal(createSource("beatSaw", { division: "1B" }).update(), 0.75);
+        window.beatPosition = 8;
+        assert.equal(createSource("beatSaw", { division: "4B" }).update(), 0.5);
+        window.beatPosition = undefined;
+        assert.throws(() => createSource("beatSaw").update(), /not initialized/);
     } finally {
         globalThis.window = previousWindow;
     }

@@ -1,4 +1,5 @@
 import { knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
+import { cmapParams } from "./colormap/params.js";
 import { openYesNo, openAlert } from "./ui/dialogs.js";
 import { listPresets, loadPreset, saveLocal, deleteLocal, saveRemote, deleteRemote } from "./preset-store.js";
 
@@ -101,7 +102,7 @@ export function createPresets({ fractalRenderer, packCMParams, xlutUI, onChange 
         }
     }    //          8. Preset anwenden
     function applyPreset(preset) {
-        const restoredKnobs = deserializeKnobs(preset.knobs);
+        const restoredKnobs = deserializeKnobs(preset.knobs, cmapParams);
         // Fractal
         fractalRenderer.setView({
             centerX: preset.fractalParams.centerX,

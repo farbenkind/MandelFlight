@@ -38,9 +38,19 @@ tempo tracker: off-beat bass notes can still affect the estimate.
 intervals) and freshness, not the probability of correct musical tempo.
 JS exposes it as `window.beatConfidence`; it does not gate modulation.
 The registry sources `beatPhase`, `beatSaw`, `beatTri`, `beatPulse` (50% duty)
-and `beatSin` use only `window.beatPhase`. All are unipolar (0-1); Saw starts
+and `beatSin` follow the global BeatClock. All are unipolar (0-1); Saw starts
 at 0, Tri/Sin peak at phase 0.5, Pulse is high for the first half-cycle.
 They have no independent oscillator state or frequency parameters.
+`beatPhase` remains the raw single-beat phase. The four projections declare a
+discrete `division` select, defaulting to `1/4` (also for old presets).
+In 4/4, 4 Bars/2 Bars/1 Bar use 16/8/4 beats (stored as `4B`/`2B`/`1B`).
+Note divisions range from `1/2` to `1/32`; `D` multiplies their duration by
+3/2, `T` by 2/3, including `1/2D` and `1/2T`.
+Rust exports `BeatData.beat_position` as a double-precision, unwrapped beat
+position (`window.beatPosition`). Accepted onsets advance its beat index;
+missing onsets extrapolate at the current BPM, and subsequent onsets align
+to the nearest beat. This is relative to the first detected onset, not a
+detected musical downbeat. Sampling/select changes do not start a new clock.
 
 ## Project structure
 
@@ -48,7 +58,8 @@ They have no independent oscillator state or frequency parameters.
   renderer source.
 - `src/projekte/fractal-demo/fullscreen.html` runs the same fractal renderer
   without editor controls; use the editor's Fullscreen button to open the
-  current view and colormap state in a new tab.
+  current view and colormap state in a new tab. Editor-only mod-panel dragging
+  is initialized only in the editor, not in the fullscreen runtime.
 - `LICENSE` contains the GNU GPL v3 license accompanying the source project.
 - `src/projekte/function-plotter/` is the function-chain plotter (local only).
 - `functions/api/presets/` is the preset API (Cloudflare Pages Function + KV).
@@ -79,6 +90,31 @@ The miscCmap HueShift knob rotates the final PrimCmap RGB color in HSV space
 on the GPU, preserving HSV saturation and value (not perceptual luminance).
 Its 0-1 range represents a full turn: 0 and 1 are neutral, 0.5 is 180 degrees.
 The existing knob modulation and preset storage also apply to HueShift.
+
+Colormap knobs always show their parameter name below the dial. Hovering over
+the dial or dragging it shows the current GPU parameter value (including
+modulation) above it, rounded to three decimals.
+
+xCmap Relax is the first control in each XR/XG/XB/ALL column, before PrePow.
+It maps the domain with `y = 0.5 + (1 - 2 * relax) * (x - 0.5)`:
+0 preserves x, 0.5 collapses it to the midpoint, and 1 mirrors it to 1-x.
+Channel and ALL values add and are clamped to 0-1. Subsequent warps and the
+LUT still apply: at 0.5 the color is constant, but non-neutral downstream
+settings can change which PrimCmap color that midpoint produces.
+Relax supports the existing modulation, presets and fullscreen synchronization.
+Loading older presets/snapshots defaults missing schema parameters to their
+initial values, including Relax=0.
+
+xCmap Shift rolls the existing Relax-selected section without moving its bounds.
+It rotates the input position before Relax: `y = relaxDomain(fract(x + shift), relax)`,
+then applies the unchanged PrePow/wave/Shape2/LUT chain. Relax=0.25 keeps the
+interval [0.25, 0.75]; Relax=0.5 stays at the midpoint for every Shift value.
+Mirrored sections (Relax>0.5) retain their orientation. The Shift knob remains
+last in each UI column; channel and ALL shifts add. Zero and whole turns are
+neutral (including the endpoint x=1); negative shifts wrap as well.
+Shift works with WaveMix=0. Existing presets retain their values, but Shift
+now rolls the selected section instead of offsetting the final output or
+changing only the cosine wave's internal phase.
 
 Live: https://mandelflight.pages.dev (Pages project mandelflight, KV binding PRESETS is set in `wrangler.toml`).
 

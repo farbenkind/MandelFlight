@@ -1,5 +1,6 @@
 import { knobs, KnobState } from "../knob-state.js";
 import { openModOverlay } from "./mod-overlay.js";
+import { updateKnobVisual } from "./knob-visual.js";
 
 export function initKnobs({ onChange } = {}) {
     document.querySelectorAll(".knob").forEach(knob => {
@@ -8,12 +9,10 @@ export function initKnobs({ onChange } = {}) {
 
         knobs[param] = new KnobState(initValue);
 
-        const updateVisual = () => {
-            const v = knobs[param].liveValue;
-            const angle = v * 270 - 135;
-            knob.style.transform = `rotate(${angle}deg)`;
-            knob.style.setProperty("--needle-angle", angle + "deg");
-        };
+        const updateVisual = () => updateKnobVisual(knob, knobs[param]);
+        const wrapper = knob.parentElement;
+        let pointerId = null;
+        let previousY = 0;
 
         updateVisual();
 
@@ -21,19 +20,36 @@ export function initKnobs({ onChange } = {}) {
             openModOverlay(param);
         })
 
-        knob.addEventListener("pointerdown", () => {
+        knob.addEventListener("pointerdown", (ev) => {
+            if (!ev.isPrimary || ev.button !== 0 || pointerId !== null) return;
+            ev.preventDefault();
+            pointerId = ev.pointerId;
+            previousY = ev.clientY;
+            knob.setPointerCapture(pointerId);
             knobs[param].knobPressed = true;
+            wrapper.classList.add("dragging");
         });
 
-        window.addEventListener("pointerup", () => {
+        const endDrag = () => {
+            const capturedId = pointerId;
+            pointerId = null;
             knobs[param].knobPressed = false;
-        });
+            wrapper.classList.remove("dragging");
+            if (capturedId !== null && knob.hasPointerCapture(capturedId)) {
+                knob.releasePointerCapture(capturedId);
+            }
+        };
+        knob.addEventListener("pointerup", endDrag);
+        knob.addEventListener("pointercancel", endDrag);
+        knob.addEventListener("lostpointercapture", endDrag);
+        window.addEventListener("blur", endDrag);
 
-        window.addEventListener("pointermove", (ev) => {
-            if (!knobs[param].knobPressed) return;
+        knob.addEventListener("pointermove", (ev) => {
+            if (ev.pointerId !== pointerId) return;
 
             let v = knobs[param].liveValue;
-            v += ev.movementY * -0.005;
+            v += (ev.clientY - previousY) * -0.005;
+            previousY = ev.clientY;
             v = Math.max(0, Math.min(1, v));
 
             knobs[param].liveValue = v;

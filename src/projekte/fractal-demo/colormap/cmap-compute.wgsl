@@ -76,10 +76,15 @@ fn primcolmap2(x: f32, amount: f32, shape:f32, power: f32, pos: f32, mult: f32, 
     return amount * spk(c, power, 10000.0);
 }
 
-// xCmap: verzerrt nur die Domain x; bei Mix=0 und Pow-Knobs=0.5 ist sie die Identitaet
-fn xwarp(x: f32, prePow: f32, waveMix: f32, waveFreq: f32, postPow: f32, shift: f32) -> f32 {
-    let x1 = spk(clamp(x, 0.0, 1.0), max(prePow, 0.001), 100.0);
-    let wave = 0.5 + 0.5 * cos((x1 * waveFreq * 20.0 - shift) * pi2);
+fn relaxDomain(x: f32, relax: f32) -> f32 {
+    return 0.5 + (1.0 - 2.0 * clamp(relax, 0.0, 1.0)) * (x - 0.5);
+}
+
+// xCmap: Identitaet bei Relax=0, Mix=0 und Pow-Knobs=0.5.
+fn xwarp(x: f32, relax: f32, prePow: f32, waveMix: f32, waveFreq: f32, postPow: f32) -> f32 {
+    let relaxed = relaxDomain(clamp(x, 0.0, 1.0), relax);
+    let x1 = spk(relaxed, max(prePow, 0.001), 100.0);
+    let wave = 0.5 + 0.5 * cos(x1 * waveFreq * 20.0 * pi2);
     let mixed = mix(x1, wave, waveMix);
     return spk(clamp(mixed, 0.0, 1.0), max(postPow, 0.001), 100.0);
 }
@@ -89,6 +94,15 @@ fn xlutLookup(channel: u32, x: f32) -> f32 {
     let i = u32(floor(p));
     let j = min(i + 1u, 1023u);
     return mix(xlut[channel * 1024u + i], xlut[channel * 1024u + j], fract(p));
+}
+
+fn shiftDomain(x: f32, shift: f32) -> f32 {
+    let turns = fract(shift);
+    // Preserve the endpoint x=1 when the shift is neutral.
+    if (turns == 0.0) {
+        return x;
+    }
+    return fract(x + turns);
 }
 
 fn rgbToHsv(rgb: vec3<f32>) -> vec3<f32> {
@@ -130,12 +144,13 @@ fn cm_main(@builtin(global_invocation_id) gid : vec3<u32>) {
 
     let x = f32(gid.x) / 1024.0;
 
-    // ALL-Knobs: Shape/Pow/Shape1/Shape2 verschieben um (all-0.5), Mix/Freq/Shift/Pos/Mult addieren sich,
+    // ALL-Knobs: Shape/Pow/Shape1/Shape2 verschieben um (all-0.5), Relax/Mix/Freq/Shift/Pos/Mult addieren sich,
     // Amount multipliziert sich. Neutral: 0.5 bzw. 0 bzw. 1.
     let a = cmParams;
-    let xr = xlutLookup(0u, xwarp(x, a.xpre_r + a.xpre_all - 0.5, a.xmix_r + a.xmix_all, a.xfreq_r + a.xfreq_all, a.xpost_r + a.xpost_all - 0.5, a.xshift_r + a.xshift_all));
-    let xg = xlutLookup(1u, xwarp(x, a.xpre_g + a.xpre_all - 0.5, a.xmix_g + a.xmix_all, a.xfreq_g + a.xfreq_all, a.xpost_g + a.xpost_all - 0.5, a.xshift_g + a.xshift_all));
-    let xb = xlutLookup(2u, xwarp(x, a.xpre_b + a.xpre_all - 0.5, a.xmix_b + a.xmix_all, a.xfreq_b + a.xfreq_all, a.xpost_b + a.xpost_all - 0.5, a.xshift_b + a.xshift_all));
+    // Roll the input position, not the output value, to retain the Relax interval.
+    let xr = xlutLookup(0u, xwarp(shiftDomain(x, a.xshift_r + a.xshift_all), a.xrelax_r + a.xrelax_all, a.xpre_r + a.xpre_all - 0.5, a.xmix_r + a.xmix_all, a.xfreq_r + a.xfreq_all, a.xpost_r + a.xpost_all - 0.5));
+    let xg = xlutLookup(1u, xwarp(shiftDomain(x, a.xshift_g + a.xshift_all), a.xrelax_g + a.xrelax_all, a.xpre_g + a.xpre_all - 0.5, a.xmix_g + a.xmix_all, a.xfreq_g + a.xfreq_all, a.xpost_g + a.xpost_all - 0.5));
+    let xb = xlutLookup(2u, xwarp(shiftDomain(x, a.xshift_b + a.xshift_all), a.xrelax_b + a.xrelax_all, a.xpre_b + a.xpre_all - 0.5, a.xmix_b + a.xmix_all, a.xfreq_b + a.xfreq_all, a.xpost_b + a.xpost_all - 0.5));
 
     let r = primcolmap2(xr, a.amount_r * a.amount_all, clamp(a.shape_r + a.shape_all - 0.5, 0.0, 1.0), clamp(a.pow_r + a.pow_all - 0.5, 0.0, 1.0), a.pos_r + a.pos_all, a.mult_r + a.mult_all, a.phaseShift);
     let g = primcolmap2(xg, a.amount_g * a.amount_all, clamp(a.shape_g + a.shape_all - 0.5, 0.0, 1.0), clamp(a.pow_g + a.pow_all - 0.5, 0.0, 1.0), a.pos_g + a.pos_all, a.mult_g + a.mult_all, a.phaseShift);

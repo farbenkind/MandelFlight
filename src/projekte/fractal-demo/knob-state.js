@@ -67,8 +67,8 @@ export function serializeKnobs(knobs) {
 
     return out;
 }
-export function deserializeKnobs(data) {
-    const out = {};
+export function deserializeKnobs(data, defaults = []) {
+    const out = Object.fromEntries(defaults.map(param => [param.id, new KnobState(param.init)]));
 
     for (const key in data) {
         const k = data[key];
