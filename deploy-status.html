@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#10151b">
+    <title>MandelFlight – Deploy-Status</title>
+    <link rel="stylesheet" href="/deploy-status.css">
+</head>
+<body>
+    <main class="page">
+        <header class="topbar">
+            <a class="brand" href="/">MandelFlight</a>
+            <nav aria-label="Schnelllinks">
+                <a href="https://github.com/farbenkind/MandelFlight/actions" target="_blank" rel="noreferrer">GitHub Actions ↗</a>
+                <a href="https://dash.cloudflare.com/" target="_blank" rel="noreferrer">Cloudflare ↗</a>
+                <a href="https://mandelflight.pages.dev/" target="_blank" rel="noreferrer">Live-Seite ↗</a>
+            </nav>
+        </header>
+
+        <section class="intro">
+            <p class="eyebrow">PUSH → TESTS & BUILD → CLOUDFLARE PAGES</p>
+            <h1>Deploy-Status</h1>
+            <p>Hier siehst du, ob dein letzter Push erfolgreich gebaut und veröffentlicht wurde.</p>
+            <button id="refreshBtn" type="button">Status aktualisieren</button>
+            <span id="updatedAt" class="muted" aria-live="polite"></span>
+        </section>
+
+        <section class="flow" aria-label="Deploy-Ablauf">
+            <article class="stage" id="pushStage">
+                <span class="stage-number">1</span>
+                <div>
+                    <h2>Push auf GitHub</h2>
+                    <p id="pushSummary">Lade letzten Push …</p>
+                    <a id="commitLink" class="detail-link hidden" target="_blank" rel="noreferrer">Commit ansehen ↗</a>
+                </div>
+                <span class="badge pending" id="pushBadge">Lädt</span>
+            </article>
+            <article class="stage" id="buildStage">
+                <span class="stage-number">2</span>
+                <div>
+                    <h2>Tests &amp; Build</h2>
+                    <p id="buildSummary">Warte auf GitHub Actions …</p>
+                </div>
+                <span class="badge pending" id="buildBadge">Lädt</span>
+            </article>
+            <article class="stage" id="deployStage">
+                <span class="stage-number">3</span>
+                <div>
+                    <h2>Cloudflare Pages</h2>
+                    <p id="deploySummary">Warte auf den Deploy-Status …</p>
+                    <a href="https://dash.cloudflare.com/" target="_blank" rel="noreferrer">Deploys in Cloudflare ansehen ↗</a>
+                </div>
+                <span class="badge pending" id="deployBadge">Lädt</span>
+            </article>
+        </section>
+
+        <section class="run-details">
+            <div class="section-heading">
+                <h2>Letzter Workflow-Lauf</h2>
+                <a id="runLink" class="hidden" target="_blank" rel="noreferrer">Details in GitHub ↗</a>
+            </div>
+            <p id="runSummary" class="muted">Lade Workflow-Daten …</p>
+            <ol id="stepsList" class="steps" aria-live="polite"></ol>
+            <p id="errorMessage" class="error" role="status"></p>
+        </section>
+
+        <aside class="hint">
+            <strong>Nach einem Push:</strong> Warte kurz und klicke auf „Status aktualisieren“.
+            Der Deploy ist fertig, wenn der Workflow grün ist und Cloudflare den Deploy-Schritt abgeschlossen hat.
+        </aside>
+    </main>
+    <script type="module" src="/deploy-status.js"></script>
+</body>
+</html>

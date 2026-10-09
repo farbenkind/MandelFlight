@@ -23,6 +23,7 @@ export default {
     rolldownOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
+        'deploy-status': resolve(import.meta.dirname, 'deploy-status.html'),
         'fractal-demo': resolve(import.meta.dirname,         'src/projekte/fractal-demo/index.html'),
         'fractal-fullscreen': resolve(import.meta.dirname,    'src/projekte/fractal-demo/fullscreen.html'),
                 'function-plotter': resolve(import.meta.dirname, 'src/projekte/function-plotter/index.html')

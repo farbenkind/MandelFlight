@@ -112,8 +112,9 @@ Database-enforced safeguards in the migration:
 
 1. Create a Supabase project. In its SQL Editor, run
    `supabase/migrations/202610090001_community_presets.sql`.
-2. Enable Google and GitHub in Supabase Authentication > Sign In / Providers.
-   Add each provider's OAuth client ID/secret there (not in this repository).
+2. Enable the OAuth providers you intend to offer in Supabase Authentication >
+   Sign In / Providers. Add each provider's OAuth client ID/secret there (not in
+   this repository). GitHub is the currently displayed community login option.
    Configure the provider callback shown by Supabase, then set the Supabase
    Site URL to `https://mandelflight.pages.dev` and add the production and local
    app URLs to the redirect allow-list.
@@ -136,6 +137,8 @@ Database-enforced safeguards in the migration:
    automatic Git deployments so pushes do not trigger a second build that
    lacks the Vite secrets. Add all four GitHub secrets and disable automatic
    Cloudflare Git deployments before pushing the workflow to `main`.
+   After a push, open the [MandelFlight deploy status page](https://mandelflight.pages.dev/deploy-status.html)
+   to check the latest commit, tests/build, Cloudflare deploy, and live app response.
 5. Sign in once with Martin's account. In Supabase SQL Editor, promote that
    account for curation with:
    `update public.profiles set is_admin = true where id = (select id from auth.users where email = 'YOUR_EMAIL');`
