@@ -43,10 +43,10 @@ test("returns no landing preset when the setting has not been created", async ()
 test("stores landing preset through the privileged server-side RPC", async () => {
     const preset = { schemaVersion: 1, kind: "visual" };
     const client = {
-        async rpc(name, args) {
+        rpc(name, args) {
             assert.equal(name, "set_landing_preset");
             assert.deepEqual(args, { preset_payload: preset });
-            return { error: null };
+            return { setHeader() { return this; }, then(resolve) { return Promise.resolve({ error: null }).then(resolve); } };
         },
     };
     await setLandingPreset(preset, client);
@@ -54,8 +54,10 @@ test("stores landing preset through the privileged server-side RPC", async () =>
 
 test("surfaces database errors instead of reporting a successful landing preset write", async () => {
     const client = {
-        async rpc() {
-            return { error: { message: "Administrator access required" } };
+        rpc() {
+            return { setHeader() { return this; }, then(resolve) {
+                return Promise.resolve({ error: { message: "Administrator access required" } }).then(resolve);
+            } };
         },
     };
     await assert.rejects(setLandingPreset({}, client), /Administrator access required/);

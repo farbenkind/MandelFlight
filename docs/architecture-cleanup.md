@@ -6,7 +6,88 @@ Dokument beschreibt das Zielbild und hält bereits ausgeführte Schritte unter
 „Fortschritt“ fest. Funktionale Änderungen sind ausdrücklich nicht Teil des
 Ziels.
 
+## Aktueller Fokus: Konten und Preset-Verstaendlichkeit
+
+Export ist vorerst zurueckgestellt. Die begonnene, nicht deployte
+Export-Vorbereitung wurde zurueckgenommen. Vorrang haben Kontowechsel,
+Login-Abschluss und eine eindeutige Trennung von Eigentum und Datenherkunft.
+
+### Analyse des aktuellen Systems
+
+- Fachlicher Inhalt: komplette Visual-Presets. Das neue Format verwendet
+  `schemaVersion: 1`, `kind: "visual"` und geometry/color/post; alte v1/v2-
+  Formate bleiben lesbar. Formate sind keine zusaetzlichen Nutzerkategorien.
+- Supabase: eigene private/oeffentliche Presets und private Community-Kopien.
+  Featured ist eine Auszeichnung eines oeffentlichen Presets, kein eigener
+  Datentyp. Das Willkommensvisual ist eine separate globale Einstellung.
+- Lokaler Browser-Speicher und alte gemeinsame Cloudflare-KV-Presets sind
+  Importquellen ohne aktuelle Kontozuordnung. Beide erscheinen momentan unter
+  My Presets; dadurch vermittelt die Kategorie faelschlich Eigentum.
+- Der Kontohinweis beim GitHub-OAuth ist keine bestaetigte Kontoauswahl.
+  Lokales Supabase-Abmelden beendet nicht die GitHub-Browsersession.
+- `editingPreset`, Formularinhalte und aktueller Presetbezug werden beim
+  Identitaetswechsel nicht explizit zurueckgesetzt. Async-Aktionen brauchen
+  einen stabilen Kontobezug und eine Invalidierung bei Identitaetswechsel.
+- Die Formularsichtbarkeit wird sowohl vom Kategorie- als auch vom
+  Bearbeitungsablauf gesteuert. Speichern und Ueberschreiben verwenden denselben
+  Buttontext; `refresh()` loescht zudem Erfolgshinweise.
+- Lokale Importe werden anhand gleicher Namen ausgeblendet, obwohl ein Name
+  keine Identitaet ist. Suche/Sortierung erfasst die angehaengten Importquellen
+  nicht konsistent.
+
+### Ziel fuer die naechste Umsetzung
+
+**Aktualisierte Entscheidung:** Ein GitHub-Login mit Benutzer/A (Standard),
+Admin/A und Testbenutzer/B. Nur berechtigte Admins sehen die Modusauswahl.
+B ist ein privater Testbestand pro authentifiziertem Admin, kein Fremdkonto.
+Serverseitige Workspace-Pruefung ersetzt den unzuverlaessigen GitHub-
+Kontohinweis. Alle existierenden Presets bleiben unveraendert in A.
+Der Herkunfts-/Importbereich bleibt ein separater nachfolgender Schritt.
+
+1. Aktives Konto mit GitHub-Namen und E-Mail deutlich anzeigen; Anmeldung,
+   Abmeldung und Wechsel explizit darstellen. Wechsel erst nach Rueckkehr und
+   bestaetigter Session als erfolgreich melden, nicht nach OAuth-Start.
+2. Meine Presets ausschliesslich nach `owner_id` des aktiven Kontos anzeigen.
+   Browserlokale und gemeinsame alte Cloud-Presets in einen eigenen
+   Importbereich mit Herkunftshinweis verschieben.
+3. Community und Featured als oeffentliche Bibliothek/kuratierte Auswahl
+   kennzeichnen; eigene Karten mit Privat/Oeffentlich markieren.
+4. Primaeraktionen: Laden und privat im sichtbaren Konto speichern.
+   Kopieren/Importieren, Aktualisieren und Veroeffentlichen klar unterscheiden;
+   seltene Aktionen wie Loeschen und Admin-Kuration nachrangig platzieren.
+5. Identitaetswechsel invalidiert Listen, Bearbeitungsziel und kontogebundene
+   Aktionen. Visualisierung darf erhalten bleiben, aber nicht stillschweigend
+   im neuen Konto gespeichert werden.
+
+Abnahme: Ein neuer Nutzer soll binnen zehn Sekunden Konto, Eigentum,
+Community-Herkunft und Speicherziel erkennen. Dies erfordert einen echten
+Benutzertest; automatisierte Tests allein belegen die Zehn-Sekunden-Vorgabe
+nicht. Login und Wechsel mit beiden Konten end-to-end pruefen.
+
+### Spaetere Capability: Export
+
+Keine Export-UI oder weitere Exportimplementierung in diesem Schritt.
+Als Architekturvorgabe bleiben vollstaendige, versionierte JSON-Visualdaten
+ohne DOM, Editorzustand oder Audio-Geraete bestehen. Live-Renderer und spaeterer
+Offline-Renderer sollen denselben Vertrag nutzen; Zeit/Frame-Schritt,
+Ausgabeformat und Audioquellen werden von getrennten Hosts bereitgestellt.
+Live Canvas Capture und Offline Frame-by-Frame sind zukuenftige Render-Modi.
+Video-only, Mikrofon und nutzerfreigegebenes Tab-/System-Audio sind spaetere
+Aufnahmeoptionen, keine Preset-Typen. Keine Medienstreams oder Berechtigungen
+im Preset speichern. Nutzer stellen Audio bereit und verantworten die Rechte.
+Der aktuelle Runtime-Code ist damit noch nicht als offline-faehig zertifiziert.
+
 ## Fortschritt
+
+- **2026-10-09:** Ein GitHub-Login mit explizitem Arbeitsmodus ersetzt den
+  bisherigen Kontohinweis. Benutzer/A ist Standard, Admin/A nutzt denselben
+  Bestand mit Verwaltungsrechten, Testbenutzer/B ist ein privater Bestand pro
+  Admin. Die Migration prueft Berechtigung und Datensatz serverseitig.
+  Modus-/Identitaetswechsel invalidieren Listen, Bearbeitungsziele und alte
+  Aktionen; Requests halten Modus und erwartete Identitaet fest.
+  Erfolgshinweise bleiben nach Listenrefresh sichtbar.
+  [Workspace-SQL-Tests](../supabase/tests/workspaces.sql) pruefen RLS und RPCs
+  mit Admin- und Nicht-Admin-Identitaeten und rollen Testschreibzugriffe zurueck.
 
 - **2026-10-09:** Die Modulationsauswertung wurde aus `main.js` in
   [modulation-engine.js](../src/projekte/fractal-demo/modulation-engine.js)

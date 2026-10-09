@@ -4,13 +4,18 @@ export function createCommunitySession({
 } = {}) {
     let session = null;
     let isAdmin = false;
+    let canAdmin = false;
+    let workspaceReady = false;
     let revision = 0;
     let authSubscription = null;
     let startPromise = null;
     const listeners = new Set();
 
     function snapshot() {
-        return { session, user: session?.user ?? null, isAdmin };
+        return {
+            session, user: session?.user ?? null, isAdmin, canAdmin, workspaceReady,
+            mode: getWorkspaceMode(), dataset: getWorkspaceDataset(),
+        };
     }
 
     function notify() {
@@ -19,8 +24,13 @@ export function createCommunitySession({
     }
 
     function updateSession(nextSession) {
+        const identityChanged = session?.user?.id !== nextSession?.user?.id;
         session = nextSession;
+        setWorkspaceUser(session?.user?.id);
         isAdmin = false;
+        canAdmin = false;
+        workspaceReady = false;
+        if (identityChanged) setWorkspaceMode("user");
         const currentRevision = ++revision;
         notify();
         const userId = session?.user?.id;
@@ -28,15 +38,22 @@ export function createCommunitySession({
 
         queueMicrotask(() => {
             if (currentRevision !== revision) return;
-            client.from("profiles").select("is_admin").eq("id", userId).maybeSingle()
+            scopeWorkspaceRequest(client.rpc("get_workspace_access"))
                 .then(({ data, error }) => {
                     if (error) throw error;
                     if (currentRevision !== revision) return;
-                    isAdmin = Boolean(data?.is_admin);
+                    canAdmin = Boolean(data?.can_admin);
+                    workspaceReady = true;
+                    if (!canAdmin) setWorkspaceMode("user");
+                    isAdmin = canAdmin && getWorkspaceMode() === "admin";
                     notify();
                 })
                 .catch(error => {
-                    if (currentRevision === revision) onError(error);
+                    if (currentRevision === revision) {
+                        setWorkspaceMode("user");
+                        notify();
+                        onError(error);
+                    }
                 });
         });
     }
@@ -61,6 +78,33 @@ export function createCommunitySession({
     return {
         getSession: () => session,
         getSnapshot: snapshot,
+        async setMode(mode) {
+            if (!workspaceReady || !session?.user) throw new Error("Arbeitsmodus ist noch nicht bereit.");
+            if (mode !== "user" && !canAdmin) throw new Error("Nur berechtigte Admins koennen diesen Modus verwenden.");
+            const request = ++revision;
+            setWorkspaceMode(mode);
+            isAdmin = false;
+            workspaceReady = false;
+            notify();
+            try {
+                const { data, error } = await scopeWorkspaceRequest(client.rpc("get_workspace_access"));
+                if (error) throw new Error(error.message);
+                if (request !== revision) throw new Error("Anmeldung hat sich waehrend des Moduswechsels geaendert.");
+                canAdmin = Boolean(data?.can_admin);
+                if (mode !== "user" && !canAdmin) throw new Error("Adminberechtigung ist nicht mehr verfuegbar.");
+                workspaceReady = true;
+                isAdmin = canAdmin && mode === "admin";
+                notify();
+            } catch (error) {
+                if (request === revision) {
+                    setWorkspaceMode("user");
+                    workspaceReady = true;
+                    isAdmin = false;
+                    notify();
+                }
+                throw error;
+            }
+        },
         subscribe(listener) {
             listeners.add(listener);
             listener(snapshot());
@@ -76,3 +120,4 @@ export function createCommunitySession({
         },
     };
 }
+import { getWorkspaceMode, getWorkspaceDataset, setWorkspaceMode, setWorkspaceUser, scopeWorkspaceRequest } from "./community-workspace.js";

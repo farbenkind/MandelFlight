@@ -33,6 +33,7 @@ export function createCommunityPresetCard(entry, actions, document = globalThis.
     const author = document.createElement("p");
     author.className = "community-preset-author";
     author.textContent = `von ${entry.profiles?.display_name || "MandelFlight User"}`;
+    if (entry.dataset === "B") author.textContent += " · Privater Testbestand B";
     card.append(author);
     if (entry.description) {
         const description = document.createElement("p");

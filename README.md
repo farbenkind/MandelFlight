@@ -92,6 +92,19 @@ New full-visual payloads use `schemaVersion: 1`, `kind: "visual"` and separate
 `geometry`, `color`, and `post` objects. The UI only saves and loads complete
 Visual presets. Existing version-1 and version-2 formats remain readable, and
 old browser-local presets can be imported into the signed-in account.
+
+Eligible admins use one GitHub identity with three explicitly selected workspaces:
+**User / A** (default, no admin actions), **Admin / A** (same personal presets
+plus administration), and **Test user / B** (separate private test presets for
+that admin, no admin actions). B cannot be published or featured. Likes, copies
+and view deduplication distinguish A/B; interactions with public community
+presets still affect their real counters. Storage and write limits remain
+shared per authenticated account. B is not impersonation of another account.
+Apply `supabase/migrations/202610090004_workspaces.sql` before deploying the
+workspace UI. RLS and privileged RPCs check the request workspace and admin
+eligibility; changing the UI alone cannot access B or grant admin privileges.
+Changing identity or workspace clears editing targets and account-bound UI
+state, but retains the current visualization. New sessions start in User / A.
 **My Presets** also displays the old shared Cloudflare KV presets, labelled
 separately from account-owned presets. They can be loaded without signing in
 or explicitly imported as private copies after signing in. Imports never
@@ -122,6 +135,8 @@ Database-enforced safeguards in the migration:
    `supabase/migrations/202610090001_community_presets.sql`.
    To enable the global welcome visualization, also run
    `supabase/migrations/202610090003_landing_preset.sql`.
+   For the three-workspace login flow, also run
+   `supabase/migrations/202610090004_workspaces.sql`.
 2. Enable the OAuth providers you intend to offer in Supabase Authentication >
    Sign In / Providers. Add each provider's OAuth client ID/secret there (not in
    this repository). GitHub is the currently displayed community login option.

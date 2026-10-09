@@ -7,12 +7,14 @@ function createElement() {
     return {
         textContent: "",
         disabled: false,
+        value: "",
         classList: {
             toggles: new Map(),
             toggle(name, force) { this.toggles.set(name, force); },
         },
         addEventListener(type, listener) { listeners.set(type, listener); },
         click() { listeners.get("click")?.(); },
+        change() { listeners.get("change")?.(); },
     };
 }
 
@@ -26,8 +28,9 @@ function createDocument() {
         "landingPresetAdminControls",
         "authGithubBtn",
         "authSignOutBtn",
-        "authGithubAccountInput",
-        "authSwitchAccountBtn",
+        "authWorkspace",
+        "authWorkspaceMode",
+        "authWorkspaceStatus",
     ].map(id => [id, createElement()]));
     return {
         elements,
@@ -46,13 +49,15 @@ test("community auth UI reflects session state and binds auth actions", async ()
         let publishState;
         const actions = [];
         const states = [];
-        let selectedLogin = null;
+        let selectedMode = null;
         const session = {
             subscribe(listener) {
                 publishState = listener;
                 listener({ user: null, isAdmin: false });
             },
             start: async () => {},
+            setMode: async mode => { selectedMode = mode; },
+            getSnapshot: () => ({ user: { id: "user-2" }, mode: selectedMode, canAdmin: true, workspaceReady: true }),
         };
         createCommunityAuthUI({
             communitySession: session,
@@ -62,7 +67,6 @@ test("community auth UI reflects session state and binds auth actions", async ()
             },
             onSignIn: async () => {},
             onSignOut: async () => {},
-            onSwitchAccount: async login => { selectedLogin = login; },
             onStateChange: state => states.push(state),
             onError: error => { throw error; },
         });
@@ -86,12 +90,13 @@ test("community auth UI reflects session state and binds auth actions", async ()
         assert.equal(typeof actions[0], "function");
         assert.equal(typeof actions[1], "function");
 
-        fakeDocument.elements.get("authGithubAccountInput").value = "vuih1723";
-        fakeDocument.elements.get("authSwitchAccountBtn").click();
+        fakeDocument.elements.get("authWorkspaceMode").value = "test";
+        fakeDocument.elements.get("authWorkspaceMode").change();
         assert.equal(actions.length, 3);
         assert.equal(typeof actions[2], "function");
         await actions[2]();
-        assert.equal(selectedLogin, "vuih1723");
+        assert.equal(selectedMode, "test");
+        assert.match(fakeDocument.elements.get("authWorkspaceStatus").textContent, /Datensatz B/);
     } finally {
         globalThis.document = originalDocument;
     }

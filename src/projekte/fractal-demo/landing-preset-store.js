@@ -12,8 +12,9 @@ export async function getLandingPreset(client) {
 
 export async function setLandingPreset(presetData, client) {
     if (!client) throw new Error("Community ist noch nicht konfiguriert.");
-    const { error } = await client.rpc("set_landing_preset", {
+    const { error } = await scopeWorkspaceRequest(client.rpc("set_landing_preset", {
         preset_payload: presetData,
-    });
+    }));
     if (error) throw new Error(error.message);
 }
+import { scopeWorkspaceRequest } from "./community-workspace.js";

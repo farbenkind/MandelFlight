@@ -53,18 +53,22 @@
             <p id="communityConfigNotice" role="status"></p>
             <section class="community-auth">
                 <div id="authSignedOut">
-                    <span>Community-Funktionen:</span>
+                    <span>Nicht angemeldet</span>
                     <button id="authGithubBtn" type="button">Mit GitHub anmelden</button>
                 </div>
                 <div id="authSignedIn" class="hidden">
-                    <span>Angemeldet als <strong id="authUserName"></strong></span>
+                    <span>Aktives GitHub-Konto: <strong id="authUserName"></strong></span>
                     <button id="authSignOutBtn" type="button">Abmelden</button>
                 </div>
-                <div id="authAccountSwitch">
-                    <label for="authGithubAccountInput">GitHub-Konto wechseln (Benutzername oder E-Mail)</label>
-                    <input id="authGithubAccountInput" type="text" autocomplete="username" placeholder="GitHub-Benutzername">
-                    <button id="authSwitchAccountBtn" type="button">Konto wechseln</button>
+                <div id="authWorkspace" class="hidden">
+                    <label for="authWorkspaceMode">Arbeitsmodus</label>
+                    <select id="authWorkspaceMode" disabled>
+                        <option value="user">Benutzer · Datensatz A</option>
+                        <option value="admin">Admin · Datensatz A</option>
+                        <option value="test">Testbenutzer · Datensatz B</option>
+                    </select>
                 </div>
+                <p id="authWorkspaceStatus" role="status">Nicht angemeldet.</p>
                 <div id="landingPresetAdminControls" class="hidden">
                     <button id="setLandingPresetBtn" type="button">Aktuelle Visualisierung als Willkommensvisual setzen</button>
                 </div>
@@ -91,6 +95,7 @@
                 <button id="presetSaveAsBtn" type="button">Aktuelle Ansicht als Preset speichern</button>
             </div>
             <div id="presetSaveUI" class="hidden">
+                <p id="presetSaveTarget"></p>
                 <label>Name <input id="presetNameInput" placeholder="Neuer Preset-Name" maxlength="64"></label>
                 <label>Beschreibung <textarea id="presetDescriptionInput" maxlength="500" rows="2"></textarea></label>
                 <label class="preset-publish"><input id="presetPublishInput" type="checkbox"> Öffentlich in der Community veröffentlichen</label>

@@ -15,23 +15,14 @@ function createClient() {
                 return { data: { session: null }, error: null };
             },
         },
-        from(table) {
-            assert.equal(table, "profiles");
+        rpc(name) {
+            assert.equal(name, "get_workspace_access");
             return {
-                select(column) {
-                    assert.equal(column, "is_admin");
-                    return {
-                        eq(key, userId) {
-                            assert.equal(key, "id");
-                            return {
-                                maybeSingle() {
-                                    return new Promise((resolve, reject) => {
-                                        profileQueries.push({ userId, resolve, reject });
-                                    });
-                                },
-                            };
-                        },
-                    };
+                setHeader() { return this; },
+                then(resolve, reject) {
+                    return new Promise((res, rej) => {
+                        profileQueries.push({ resolve: res, reject: rej });
+                    }).then(resolve, reject);
                 },
             };
         },
@@ -58,10 +49,12 @@ test("community session publishes auth state and resolves profile admin status",
     assert.equal(service.getSnapshot().isAdmin, false);
 
     await flushProfileLookup();
-    client.profileQueries[0].resolve({ data: { is_admin: true }, error: null });
+    client.profileQueries[0].resolve({ data: { can_admin: true }, error: null });
     await flushProfileLookup();
-    assert.equal(service.getSnapshot().isAdmin, true);
-    assert.equal(states.at(-1).isAdmin, true);
+    assert.equal(service.getSnapshot().isAdmin, false);
+    assert.equal(states.at(-1).canAdmin, true);
+    assert.equal(states.at(-1).workspaceReady, true);
+    assert.equal(states.at(-1).mode, "user");
 });
 
 test("stale profile responses cannot restore admin state after sign-out", async () => {
@@ -72,10 +65,74 @@ test("stale profile responses cannot restore admin state after sign-out", async 
     await flushProfileLookup();
     client.emit("SIGNED_OUT", null);
 
-    client.profileQueries[0].resolve({ data: { is_admin: true }, error: null });
+    client.profileQueries[0].resolve({ data: { can_admin: true }, error: null });
     await flushProfileLookup();
     assert.equal(service.getSession(), null);
     assert.equal(service.getSnapshot().isAdmin, false);
+});
+
+test("eligible admins explicitly switch between A modes and isolated B, then sign-out resets mode", async () => {
+    const client = createClient();
+    const service = createCommunitySession({ client });
+    await service.start();
+    client.emit("SIGNED_IN", { user: { id: "admin" } });
+    await flushProfileLookup();
+    client.profileQueries[0].resolve({ data: { can_admin: true }, error: null });
+    await flushProfileLookup();
+    const adminSwitch = service.setMode("admin");
+    await flushProfileLookup();
+    assert.equal(service.getSnapshot().workspaceReady, false);
+    client.profileQueries[1].resolve({ data: { can_admin: true }, error: null });
+    await adminSwitch;
+    assert.equal(service.getSnapshot().isAdmin, true);
+    assert.equal(service.getSnapshot().dataset, "A");
+    const testSwitch = service.setMode("test");
+    await flushProfileLookup();
+    client.profileQueries[2].resolve({ data: { can_admin: true }, error: null });
+    await testSwitch;
+    assert.equal(service.getSnapshot().isAdmin, false);
+    assert.equal(service.getSnapshot().dataset, "B");
+    client.emit("SIGNED_OUT", null);
+    assert.equal(service.getSnapshot().dataset, "A");
+    assert.equal(service.getSnapshot().canAdmin, false);
+});
+
+test("ordinary users cannot switch to admin or test workspace", async () => {
+    const client = createClient();
+    const service = createCommunitySession({ client });
+    await service.start();
+    client.emit("SIGNED_IN", { user: { id: "ordinary" } });
+    await flushProfileLookup();
+    client.profileQueries[0].resolve({ data: { can_admin: false }, error: null });
+    await flushProfileLookup();
+    await assert.rejects(service.setMode("admin"), /berechtigte Admins/);
+    await assert.rejects(service.setMode("test"), /berechtigte Admins/);
+});
+
+test("failed mode confirmation returns to User/A and a stale confirmation cannot restore signed-out state", async () => {
+    const client = createClient();
+    const service = createCommunitySession({ client });
+    await service.start();
+    client.emit("SIGNED_IN", { user: { id: "admin" } });
+    await flushProfileLookup();
+    client.profileQueries[0].resolve({ data: { can_admin: true }, error: null });
+    await flushProfileLookup();
+    const failed = service.setMode("test");
+    const failure = assert.rejects(failed, /network unavailable/);
+    await flushProfileLookup();
+    client.profileQueries[1].resolve({ data: null, error: { message: "network unavailable" } });
+    await failure;
+    assert.equal(service.getSnapshot().mode, "user");
+    assert.equal(service.getSnapshot().isAdmin, false);
+    const stale = service.setMode("admin");
+    const rejection = assert.rejects(stale, /Anmeldung hat sich/);
+    await flushProfileLookup();
+    client.emit("SIGNED_OUT", null);
+    client.profileQueries[2].resolve({ data: { can_admin: true }, error: null });
+    await rejection;
+    assert.equal(service.getSession(), null);
+    assert.equal(service.getSnapshot().mode, "user");
+    assert.equal(service.getSnapshot().canAdmin, false);
 });
 
 test("auth state changes take precedence over a late initial session response", async () => {

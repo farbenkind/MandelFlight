@@ -5,17 +5,11 @@ export function getSupabaseClient() {
     return supabase;
 }
 
-export async function signIn(provider, { login } = {}) {
+export async function signIn(provider) {
     const db = getSupabaseClient();
     const options = {
         redirectTo: window.location.origin + window.location.pathname,
     };
-    if (login) {
-        options.queryParams = {
-            login,
-            prompt: "login",
-        };
-    }
     const { error } = await db.auth.signInWithOAuth({
         provider,
         options,

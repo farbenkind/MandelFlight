@@ -4,6 +4,7 @@ import { buildVisualizationPreset, isVisualizationPreset, readVisualizationPrese
 import { createCommunityAuthUI } from "./community-auth-ui.js";
 import { createCommunityPresetCard, createLocalPresetCard, createCloudPresetCard } from "./ui/preset-card.js";
 import { listLegacyCloudPresets, loadLegacyCloudPreset } from "./legacy-preset-store.js";
+import { createPresetWorkspaceState } from "./preset-workspace-state.js";
 import {
     deletePreset, likePreset, listLikedPresetIds, listPresets, loadPresetData, recordPresetView,
     saveCommunityPreset, savePreset, setFeatured, setPublished,
@@ -13,7 +14,7 @@ const CATEGORIES = ["featured", "community", "mine"];
 const LOCAL_KEY = "presets";
 
 export function createPresets({
-    fractalRenderer, xlutUI, communitySession, onSignIn, onSignOut, onSwitchAccount, onChange,
+    fractalRenderer, xlutUI, communitySession, onSignIn, onSignOut, onChange,
     onSetLandingPreset,
 }) {
     const popup = document.getElementById("presetPopup");
@@ -32,6 +33,20 @@ export function createPresets({
     let busy = false;
     let revision = 0;
     let likedIds = new Set();
+    let currentDataset = "A";
+    const workspaceState = createPresetWorkspaceState();
+
+    function updateSaveTarget() {
+        const account = currentUser?.user_metadata?.user_name || currentUser?.email || "dein Konto";
+        document.getElementById("presetSaveTarget").textContent =
+            `Speicherziel: ${account} · Datensatz ${currentDataset}. ${currentDataset === "B"
+                ? "Testbestand bleibt privat."
+                : "Privat, solange du nicht explizit veroeffentlichst."}`;
+        document.getElementById("presetSaveBtn").disabled = !currentUser || !workspaceState.ready;
+        publishInput.disabled = currentDataset === "B";
+        document.getElementById("presetSaveBtn").textContent = editingPreset
+            ? "Dieses Preset aktualisieren" : "Neues Preset speichern";
+    }
 
     function report(error) {
         console.error("Preset-Community:", error);
@@ -42,6 +57,9 @@ export function createPresets({
         if (busy) return;
         busy = true;
         popup.setAttribute("aria-busy", "true");
+        for (const id of ["authWorkspaceMode", "authGithubBtn", "authSignOutBtn", "presetSaveBtn"]) {
+            document.getElementById(id).disabled = true;
+        }
         try {
             await action();
         } catch (error) {
@@ -49,13 +67,32 @@ export function createPresets({
         } finally {
             busy = false;
             popup.setAttribute("aria-busy", "false");
+            document.getElementById("authWorkspaceMode").value = communitySession?.getSnapshot().mode ?? "user";
+            document.getElementById("authWorkspaceMode").disabled = !workspaceState.ready;
+            document.getElementById("authGithubBtn").disabled = !communitySession;
+            document.getElementById("authSignOutBtn").disabled = !communitySession;
+            updateSaveTarget();
         }
     }
 
     function onCommunityStateChange(state) {
+        if (workspaceState.update(state)) {
+            revision++;
+            editingPreset = null;
+            currentPresetId = null;
+            likedIds = new Set();
+            nameInput.value = "";
+            descriptionInput.value = "";
+            publishInput.checked = false;
+            document.getElementById("presetSaveUI").classList.add("hidden");
+            list.replaceChildren();
+            status.textContent = "";
+        }
         currentUser = state.user;
         currentIsAdmin = state.isAdmin;
-        if (popup && !popup.classList.contains("hidden")) void refresh();
+        currentDataset = state.dataset ?? "A";
+        updateSaveTarget();
+        if (popup && !popup.classList.contains("hidden") && (!currentUser || workspaceState.ready)) void refresh();
     }
 
     function selectCategory(category, refreshList = true) {
@@ -63,7 +100,7 @@ export function createPresets({
         for (const tab of document.querySelectorAll("[data-preset-category]")) {
             tab.setAttribute("aria-selected", String(tab.dataset.presetCategory === category));
         }
-        document.getElementById("presetSaveUI").classList.toggle("hidden", category !== "mine");
+        document.getElementById("presetSaveUI").classList.add("hidden");
         if (refreshList) void refresh();
     }
 
@@ -105,11 +142,15 @@ export function createPresets({
     }
 
     function button(label, action, className = "") {
+        const ticket = workspaceState.ticket();
         const element = document.createElement("button");
         element.type = "button";
         element.textContent = label;
         element.className = className;
-        element.addEventListener("click", () => run(action));
+        element.addEventListener("click", () => run(async () => {
+            workspaceState.assert(ticket);
+            await action(() => workspaceState.assert(ticket));
+        }));
         return element;
     }
 
@@ -124,7 +165,7 @@ export function createPresets({
         }
         for (const preset of legacy.filter(isVisualizationPreset)) {
             if (!preset?.name || existingNames.has(preset.name)) continue;
-            const importButton = button("Anmelden zum Import", async () => {
+            const importButton = button("Anmelden zum Import", async assertCurrent => {
                 if (!currentUser) throw new Error("Zum Import bitte anmelden.");
                 const data = readVisualizationPreset(preset);
                 await savePreset({
@@ -133,6 +174,7 @@ export function createPresets({
                     presetData: buildVisualizationPreset(preset.name, data.view, data.knobs, data.xlut),
                     publish: false,
                 }, currentUser.id);
+                assertCurrent();
                 status.textContent = `"${preset.name}" in My Presets importiert.`;
                 await refresh();
             });
@@ -148,13 +190,16 @@ export function createPresets({
             for (const entry of entries) {
                 const actions = document.createElement("div");
                 actions.className = "community-preset-actions";
-                actions.append(button("Laden", async () => {
-                    applyPreset(await loadLegacyCloudPreset(entry.name), { name: entry.name });
+                    actions.append(button("Laden", async assertCurrent => {
+                        const preset = await loadLegacyCloudPreset(entry.name);
+                        assertCurrent();
+                        applyPreset(preset, { name: entry.name });
                 }));
-                actions.append(button(currentUser ? "In My Presets importieren" : "Anmelden zum Import", async () => {
+                actions.append(button(currentUser ? "In My Presets importieren" : "Anmelden zum Import", async assertCurrent => {
                     if (!currentUser) throw new Error("Zum Import bitte anmelden.");
                     const userId = currentUser.id;
                     const data = readVisualizationPreset(await loadLegacyCloudPreset(entry.name));
+                    assertCurrent();
                     if (currentUser?.id !== userId) throw new Error("Konto hat sich geaendert. Bitte erneut importieren.");
                     await savePreset({
                         name: entry.name,
@@ -162,6 +207,7 @@ export function createPresets({
                         presetData: buildVisualizationPreset(entry.name, data.view, data.knobs, data.xlut),
                         publish: false,
                     }, userId);
+                    assertCurrent();
                     status.textContent = `"${entry.name}" in My Presets importiert.`;
                     await refresh();
                 }));
@@ -180,18 +226,23 @@ export function createPresets({
     function renderEntry(entry) {
         const actions = document.createElement("div");
         actions.className = "community-preset-actions";
-        actions.append(button("Laden", async () => {
+        actions.append(button("Laden", async assertCurrent => {
             const loaded = await loadPresetData(entry.id);
+            assertCurrent();
             applyPreset(loaded.preset_data, entry);
         }));
-        if (currentCategory === "mine") {
-            actions.append(button(entry.is_public ? "Veröffentlichung zurückziehen" : "Veröffentlichen", async () => {
-                await setPublished(entry.id, !entry.is_public, currentUser.id);
-                status.textContent = entry.is_public ? "Preset ist jetzt privat." : "Preset ist jetzt öffentlich.";
-                await refresh();
-            }));
+        if (currentCategory === "mine" && entry.owner_id === currentUser?.id && entry.dataset === currentDataset) {
+            if (currentDataset !== "B") {
+                actions.append(button(entry.is_public ? "Veröffentlichung zurückziehen" : "Veröffentlichen", async assertCurrent => {
+                    await setPublished(entry.id, !entry.is_public, currentUser.id);
+                    assertCurrent();
+                    status.textContent = entry.is_public ? "Preset ist jetzt privat." : "Preset ist jetzt öffentlich.";
+                    await refresh();
+                }));
+            }
             actions.append(button("Aktuelle Ansicht überschreiben", () => {
                 editingPreset = entry;
+                updateSaveTarget();
                 nameInput.value = entry.name;
                 descriptionInput.value = entry.description ?? "";
                 publishInput.checked = entry.is_public;
@@ -199,27 +250,31 @@ export function createPresets({
                 nameInput.focus();
                 nameInput.select();
             }));
-            actions.append(button("Löschen", async () => {
+            actions.append(button("Löschen", async assertCurrent => {
                 if (!window.confirm(`"${entry.name}" endgültig löschen?`)) return;
                 await deletePreset(entry.id, currentUser.id);
+                assertCurrent();
                 status.textContent = "Preset gelöscht.";
                 await refresh();
             }));
-        } else if (currentUser && entry.owner_id !== currentUser.id) {
+        } else if (currentUser && (entry.owner_id !== currentUser.id || entry.dataset !== currentDataset)) {
             const liked = likedIds.has(entry.id);
-            actions.append(button(liked ? "♥ Gefällt mir" : "♡ Like", async () => {
+            actions.append(button(liked ? "♥ Gefällt mir" : "♡ Like", async assertCurrent => {
                 await likePreset(entry.id, currentUser.id, !liked);
+                assertCurrent();
                 await refresh();
             }));
-            actions.append(button("In My Presets speichern", async () => {
+            actions.append(button("In My Presets speichern", async assertCurrent => {
                 await saveCommunityPreset(entry.id);
+                assertCurrent();
                 status.textContent = "Kopie in My Presets gespeichert.";
                 await refresh();
             }));
         }
         if (currentIsAdmin && entry.is_public) {
-            actions.append(button(entry.featured ? "Featured entfernen" : "Als Featured markieren", async () => {
+            actions.append(button(entry.featured ? "Featured entfernen" : "Als Featured markieren", async assertCurrent => {
                 await setFeatured(entry.id, !entry.featured, Math.floor(Date.now() / 1000));
+                assertCurrent();
                 status.textContent = entry.featured ? "Featured-Auszeichnung entfernt." : "Preset als Featured markiert.";
                 await refresh();
             }));
@@ -229,17 +284,21 @@ export function createPresets({
 
     async function refresh() {
         const request = ++revision;
+        const ticket = workspaceState.ticket();
+        const userId = currentUser?.id;
         list.replaceChildren();
         const loading = document.createElement("p");
         loading.textContent = "Presets werden geladen ...";
         list.append(loading);
         try {
-            const entries = await listPresets(currentCategory, currentSort, currentUser?.id);
+            if (userId && !workspaceState.ready) throw new Error("Kontoberechtigungen werden noch geprueft.");
+            const entries = await listPresets(currentCategory, currentSort, userId);
             if (request !== revision) return;
-            likedIds = currentUser
-                ? await listLikedPresetIds(currentUser.id, entries.map(entry => entry.id))
+            likedIds = userId
+                ? await listLikedPresetIds(userId, entries.map(entry => entry.id))
                 : new Set();
             if (request !== revision) return;
+            workspaceState.assert(ticket);
             const filtered = entries.filter(entry =>
                 `${entry.name} ${entry.description ?? ""} ${entry.profiles?.display_name ?? ""}`
                     .toLocaleLowerCase().includes(currentSearch.toLocaleLowerCase()));
@@ -259,7 +318,6 @@ export function createPresets({
                 renderLocalImports(existingNames);
                 void renderCloudImports(request);
             }
-            status.textContent = "";
         } catch (error) {
             if (request !== revision) return;
             list.replaceChildren();
@@ -277,6 +335,7 @@ export function createPresets({
     function showSave() {
         selectCategory("mine");
         editingPreset = null;
+        updateSaveTarget();
         nameInput.value = "";
         descriptionInput.value = "";
         publishInput.checked = false;
@@ -286,6 +345,12 @@ export function createPresets({
 
     async function saveCurrent() {
         if (!currentUser) throw new Error("Zum Speichern bitte zuerst anmelden.");
+        if (!workspaceState.ready) throw new Error("Kontoberechtigungen werden noch geprueft.");
+        const ticket = workspaceState.ticket();
+        const userId = currentUser.id;
+        if (editingPreset && (editingPreset.owner_id !== userId || editingPreset.dataset !== currentDataset)) {
+            throw new Error("Bearbeitungsziel gehoert nicht zum aktiven Arbeitsbereich.");
+        }
         const name = nameInput.value.trim();
         if (!/^[\p{L}\p{N} _.\-+()]{1,64}$/u.test(name)) {
             throw new Error("Name: 1-64 Zeichen, Buchstaben/Zahlen, Leerzeichen oder _ . - + ( ).");
@@ -297,7 +362,8 @@ export function createPresets({
             description: descriptionInput.value.trim(),
             presetData,
             publish: publishInput.checked,
-        }, currentUser.id);
+        }, userId);
+        workspaceState.assert(ticket);
         editingPreset = null;
         document.getElementById("presetSaveUI").classList.add("hidden");
         currentPresetId = saved.id;
@@ -325,6 +391,7 @@ export function createPresets({
     document.getElementById("presetSaveAsBtn").addEventListener("click", showSave);
     document.getElementById("presetSaveBtn").addEventListener("click", () => run(saveCurrent));
     document.getElementById("setLandingPresetBtn").addEventListener("click", () => run(async () => {
+        const ticket = workspaceState.ticket();
         if (!currentIsAdmin) throw new Error("Nur Admins koennen das Willkommensvisual aendern.");
         const presetData = buildVisualizationPreset(
             "landingpreset",
@@ -333,6 +400,7 @@ export function createPresets({
             xlutUI.getChains(),
         );
         await onSetLandingPreset(presetData);
+        workspaceState.assert(ticket);
         status.textContent = "Das aktuelle Visual wurde als Willkommensvisual gespeichert.";
     }));
     popup.addEventListener("keydown", event => {
@@ -343,7 +411,6 @@ export function createPresets({
         execute: run,
         onSignIn,
         onSignOut,
-        onSwitchAccount,
         onStateChange: onCommunityStateChange,
         onError: report,
     });
