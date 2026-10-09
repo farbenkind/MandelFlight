@@ -92,6 +92,12 @@ New full-visual payloads use `schemaVersion: 1`, `kind: "visual"` and separate
 `geometry`, `color`, and `post` objects. The UI only saves and loads complete
 Visual presets. Existing version-1 and version-2 formats remain readable, and
 old browser-local presets can be imported into the signed-in account.
+**My Presets** also displays the old shared Cloudflare KV presets, labelled
+separately from account-owned presets. They can be loaded without signing in
+or explicitly imported as private copies after signing in. Imports never
+modify or delete the KV originals; legacy cloud access remains read-only.
+An unavailable legacy endpoint is shown as an error without hiding account
+or browser-local presets.
 
 Database-enforced safeguards in the migration:
 
@@ -235,6 +241,14 @@ now rolls the selected section instead of offsetting the final output or
 changing only the cosine wave's internal phase.
 
 Live: https://mandelflight.pages.dev (Cloudflare Pages project `mandelflight`).
+
+Planned custom domain: `https://mandelflight.farbenkind.org`. Add it through the
+existing Pages project's Custom domains section before changing DNS. Keep the
+Pages address available during the transition and retain the `PRESETS` KV
+binding. Add the new root and editor URLs to Supabase's redirect allow-list
+before changing the Site URL. Supabase account presets and KV data stay in
+their existing services; browser-local data and login sessions do not transfer
+between domains. Import local presets on the old origin before redirecting it.
 
 Local development with hot reload: `npm run dev` (Vite prints the local URL).
 Deploy the current build to Pages: `npm run deploy`.

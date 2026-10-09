@@ -2,7 +2,8 @@ import { knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
 import { cmapParams } from "./colormap/params.js";
 import { buildVisualizationPreset, isVisualizationPreset, readVisualizationPreset } from "./preset-format.js";
 import { createCommunityAuthUI } from "./community-auth-ui.js";
-import { createCommunityPresetCard, createLocalPresetCard } from "./ui/preset-card.js";
+import { createCommunityPresetCard, createLocalPresetCard, createCloudPresetCard } from "./ui/preset-card.js";
+import { listLegacyCloudPresets, loadLegacyCloudPreset } from "./legacy-preset-store.js";
 import {
     deletePreset, likePreset, listLikedPresetIds, listPresets, loadPresetData, recordPresetView,
     saveCommunityPreset, savePreset, setFeatured, setPublished,
@@ -140,6 +141,42 @@ export function createPresets({
         }
     }
 
+    async function renderCloudImports(request) {
+        try {
+            const entries = await listLegacyCloudPresets();
+            if (request !== revision) return;
+            for (const entry of entries) {
+                const actions = document.createElement("div");
+                actions.className = "community-preset-actions";
+                actions.append(button("Laden", async () => {
+                    applyPreset(await loadLegacyCloudPreset(entry.name), { name: entry.name });
+                }));
+                actions.append(button(currentUser ? "In My Presets importieren" : "Anmelden zum Import", async () => {
+                    if (!currentUser) throw new Error("Zum Import bitte anmelden.");
+                    const userId = currentUser.id;
+                    const data = readVisualizationPreset(await loadLegacyCloudPreset(entry.name));
+                    if (currentUser?.id !== userId) throw new Error("Konto hat sich geaendert. Bitte erneut importieren.");
+                    await savePreset({
+                        name: entry.name,
+                        description: "Aus altem gemeinsamen Cloud-Speicher importiert",
+                        presetData: buildVisualizationPreset(entry.name, data.view, data.knobs, data.xlut),
+                        publish: false,
+                    }, userId);
+                    status.textContent = `"${entry.name}" in My Presets importiert.`;
+                    await refresh();
+                }));
+                list.append(createCloudPresetCard(entry, actions));
+            }
+        } catch (error) {
+            if (request !== revision) return;
+            console.error("Alte Cloud-Presets konnten nicht geladen werden:", error);
+            const failure = document.createElement("p");
+            failure.className = "community-error";
+            failure.textContent = error.message;
+            list.append(failure);
+        }
+    }
+
     function renderEntry(entry) {
         const actions = document.createElement("div");
         actions.className = "community-preset-actions";
@@ -217,7 +254,11 @@ export function createPresets({
             } else {
                 for (const entry of filtered) list.append(renderEntry(entry));
             }
-            if (currentCategory === "mine") renderLocalImports(new Set(entries.map(entry => entry.name)));
+            if (currentCategory === "mine") {
+                const existingNames = new Set(entries.map(entry => entry.name));
+                renderLocalImports(existingNames);
+                void renderCloudImports(request);
+            }
             status.textContent = "";
         } catch (error) {
             if (request !== revision) return;
@@ -226,7 +267,10 @@ export function createPresets({
             failure.className = "community-error";
             failure.textContent = error.message;
             list.append(failure);
-            if (currentCategory === "mine") renderLocalImports();
+            if (currentCategory === "mine") {
+                renderLocalImports();
+                void renderCloudImports(request);
+            }
         }
     }
 

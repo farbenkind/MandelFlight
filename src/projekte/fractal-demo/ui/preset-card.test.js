@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createCommunityPresetCard, createLocalPresetCard } from "./preset-card.js";
+import { createCommunityPresetCard, createLocalPresetCard, createCloudPresetCard } from "./preset-card.js";
 
 const document = {
     createElement(tagName) {
@@ -78,4 +78,14 @@ test("local cards retain legacy styling, import action and local-name identity",
     assert.equal(card.children[1].textContent,
         "Lokales Legacy-Preset – nach Anmeldung in My Presets importierbar.");
     assert.equal(card.children[2], importButton);
+});
+
+test("old shared cloud cards distinguish their source and retain supplied actions", () => {
+    const actions = document.createElement("div");
+    const card = createCloudPresetCard({ name: "white flash" }, actions, document);
+    assert.equal(card.dataset.cloudName, "white flash");
+    assert.equal(card.dataset.localName, undefined);
+    assert.equal(card.children[1].textContent,
+        "Altes gemeinsames Cloud-Preset – Original bleibt beim Import unverändert.");
+    assert.equal(card.children[2], actions);
 });

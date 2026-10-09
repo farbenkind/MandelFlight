@@ -48,13 +48,25 @@ export function createCommunityPresetCard(entry, actions, document = globalThis.
 }
 
 export function createLocalPresetCard(preset, importButton, document = globalThis.document) {
+    return createLegacyCard(preset, importButton,
+        "Lokales Legacy-Preset – nach Anmeldung in My Presets importierbar.",
+        "localName", document);
+}
+
+export function createCloudPresetCard(preset, actions, document = globalThis.document) {
+    return createLegacyCard(preset, actions,
+        "Altes gemeinsames Cloud-Preset – Original bleibt beim Import unverändert.",
+        "cloudName", document);
+}
+
+function createLegacyCard(preset, actions, noteText, nameKey, document) {
     const card = document.createElement("article");
     card.className = "community-preset-card legacy-preset";
     const title = document.createElement("h3");
     title.textContent = preset.name;
     const note = document.createElement("p");
-    note.textContent = "Lokales Legacy-Preset – nach Anmeldung in My Presets importierbar.";
-    card.dataset.localName = preset.name;
-    card.append(title, note, importButton);
+    note.textContent = noteText;
+    card.dataset[nameKey] = preset.name;
+    card.append(title, note, actions);
     return card;
 }
