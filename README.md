@@ -237,3 +237,6 @@ To deploy and then open the deploy status in VS Code's integrated browser, run
 after the deploy task succeeds.
 
 Test locally with `npm run cf:dev` (serves on http://127.0.0.1:8788).
+
+Architecture review and phased refactoring plan:
+[docs/architecture-cleanup.md](docs/architecture-cleanup.md).
