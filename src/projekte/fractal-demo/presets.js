@@ -362,7 +362,6 @@ export function createPresets({ fractalRenderer, xlutUI, onChange }) {
     document.getElementById("presetCloseBtn").addEventListener("click", close);
     document.getElementById("presetSaveAsBtn").addEventListener("click", showSave);
     document.getElementById("presetSaveBtn").addEventListener("click", () => run(saveCurrent));
-    document.getElementById("authGoogleBtn").addEventListener("click", () => run(() => signIn("google")));
     document.getElementById("authGithubBtn").addEventListener("click", () => run(() => signIn("github")));
     document.getElementById("authSignOutBtn").addEventListener("click", () => run(signOut));
     popup.addEventListener("keydown", event => {
