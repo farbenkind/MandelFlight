@@ -1,4 +1,6 @@
-export function createFractalRenderer({ canvas, context, device, format }) {
+import { attachFractalNavigation } from "./fractal-navigation.js";
+
+export function createFractalRenderer({ canvas, context, device, format, onViewChange }) {
     function getCanvasAspect() {
         const bounds = canvas.getBoundingClientRect();
         return bounds.height > 0 ? bounds.width / bounds.height : canvas.width / canvas.height;
@@ -26,45 +28,10 @@ export function createFractalRenderer({ canvas, context, device, format }) {
         usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING,
     });
 
-    canvas.addEventListener("wheel", (event) => {
-        event.preventDefault();
-
-        const zoomFactor = 1.0 + event.deltaY * 0.001;
-        fractalParams[2] *= zoomFactor;
-
+    attachFractalNavigation(canvas, fractalParams, () => {
         device.queue.writeBuffer(fractalParamsBuffer, 0, fractalParams);
         runCompute();
-    });
-
-    let isDown = false;
-    let lastX = 0;
-    let lastY = 0;
-
-    canvas.addEventListener("mousedown", (event) => {
-        isDown = true;
-        lastX = event.clientX;
-        lastY = event.clientY;
-    });
-
-    canvas.addEventListener("mouseup", () => {
-        isDown = false;
-    });
-
-    canvas.addEventListener("mousemove", (event) => {
-        if (!isDown) return;
-
-        const bounds = canvas.getBoundingClientRect();
-        const dx = (event.clientX - lastX) / bounds.width;
-        const dy = (event.clientY - lastY) / bounds.height;
-
-        lastX = event.clientX;
-        lastY = event.clientY;
-
-        fractalParams[0] -= dx * fractalParams[2] * fractalParams[4];
-        fractalParams[1] += dy * fractalParams[2];
-
-        device.queue.writeBuffer(fractalParamsBuffer, 0, fractalParams);
-        runCompute();
+        onViewChange?.(getView());
     });
 
     const shaderModule = device.createShaderModule({

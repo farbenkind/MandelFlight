@@ -5,6 +5,10 @@ html, body {
     height: 100%;
     width: 100%;
 }
+
+.hidden {
+    display: none !important;
+}
 #fractalCanvas {
     position: fixed;
     top: 0;
@@ -12,6 +16,12 @@ html, body {
     width: 100%;
     height: 100%;
     z-index: 1000;
+    touch-action: none;
+    cursor: grab;
+}
+
+#fractalCanvas.navigating {
+    cursor: grabbing;
 }
 
 #fullscreenBtn {
@@ -324,7 +334,7 @@ html, body {
     box-sizing: border-box;
     width: min(560px, calc(100vw - 48px));
     min-width: 0;
-    max-height: calc(100vh - 48px);
+    max-height: calc(70vh - 33.6px);
     overflow-y: auto;
     box-shadow: 0 0 25px rgba(0,0,0,0.6);
     display: flex;
@@ -534,8 +544,15 @@ button.polish {
     background: #fa0;
 }
 
-#presetSaveBtn {
-    float: right;
+#editorToolbar, #xlutBar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+#presetBtn {
+    margin-left: auto;
 }
 #presetPopup {
     position: fixed;
@@ -551,8 +568,7 @@ button.polish {
 }
 
 #presetPopup.hidden,
-#presetSaveUI.hidden,
-#presetLoadUI.hidden {
+#presetSaveUI.hidden {
     display: none;
 }
 
@@ -560,19 +576,22 @@ button.polish {
     background: #1a1a1a;
     padding: 20px;
     border-radius: 12px;
-    width: 300px;
+    width: min(1080px, calc(100vw - 32px));
+    box-sizing: border-box;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
     color: #eee;
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
-#presetList {
+.preset-list {
     list-style: none;
     padding: 0;
     margin: 0;
 
-    max-height: 50vh;      /* oder 30vh */
+    max-height: 35vh;
     overflow-y: auto;       /* scrollen */
     overflow-x: hidden;
 
@@ -580,27 +599,241 @@ button.polish {
     padding-right: 6px;     /* Platz für Scrollbar */
 }
 
-#presetList li {
+.preset-list li {
     padding: 8px;
     background: #333;
     margin-bottom: 6px;
     border-radius: 6px;
-    cursor: pointer;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
 }
-#presetList::-webkit-scrollbar {
+.preset-list::-webkit-scrollbar {
     width: 8px;
 }
 
-#presetList::-webkit-scrollbar-thumb {
+.preset-list::-webkit-scrollbar-thumb {
     background: #555;
     border-radius: 4px;
 }
 
-#presetList::-webkit-scrollbar-track {
+.preset-list::-webkit-scrollbar-track {
     background: #222;
+}
+
+.preset-header, .preset-actions, #presetSaveUI {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.preset-header {
+    justify-content: space-between;
+}
+
+.preset-header h2 {
+    margin: 0 0 8px;
+}
+
+#presetPopupInner button, #presetPopupInner input, #presetPopupInner select, #presetBtn {
+    background: #18232c;
+    color: #e0efff;
+    border: 1px solid #427087;
+    border-radius: 6px;
+    padding: 8px;
+}
+
+#presetPopupInner button {
+    cursor: pointer;
+}
+
+#presetPopupInner button:hover {
+    background: #294152;
+}
+
+.preset-load {
+    flex: 1;
+    text-align: left;
+    overflow-wrap: anywhere;
+    min-width: 100px;
+}
+
+#presetStatus, #communityConfigNotice, #problemStatus {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: #cceeff;
+}
+
+.preset-key {
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.community-auth, .community-tabs, .community-browser-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.community-auth > div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.community-tabs {
+    border-bottom: 1px solid #427087;
+    gap: 4px;
+}
+
+.community-tabs button[aria-selected="true"] {
+    background: #17617b !important;
+    border-color: #61c9ee !important;
+}
+
+.community-browser-tools {
+    justify-content: space-between;
+}
+
+.community-browser-tools label, #presetSaveUI label, #problemForm label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1 1 220px;
+}
+
+#presetSaveUI .preset-publish {
+    flex-direction: row;
+    align-items: center;
+}
+
+#presetDescriptionInput, #problemForm textarea, #problemForm input {
+    box-sizing: border-box;
+    width: 100%;
+    background: #101820;
+    color: #e0efff;
+    border: 1px solid #427087;
+    border-radius: 6px;
+    padding: 8px;
+    font: inherit;
+}
+
+.community-preset-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    max-height: 48vh;
+    overflow-y: auto;
+    padding: 2px;
+}
+
+.community-preset-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid #344c59;
+    border-radius: 10px;
+    background: #202a31;
+}
+
+.community-preset-preview {
+    min-height: 76px;
+    border-radius: 7px;
+    background:
+        radial-gradient(ellipse at 25% 60%, var(--preview-a), transparent 55%),
+        radial-gradient(ellipse at 75% 30%, var(--preview-b), transparent 55%),
+        #101820;
+}
+
+.community-preset-heading, .community-preset-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.community-preset-heading h3, .community-preset-card p {
+    margin: 0;
+}
+
+.community-preset-heading h3 {
+    font-size: 16px;
+    overflow-wrap: anywhere;
+}
+
+.featured-badge {
+    color: #ffe08a;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.community-preset-author, .community-preset-stats {
+    color: #b6d7e5;
+    font-size: 13px;
+}
+
+.community-preset-description {
+    overflow-wrap: anywhere;
+    font-size: 13px;
+}
+
+.community-preset-actions button {
+    flex: 1 1 auto;
+}
+
+.community-error {
+    color: #ffaaaa;
+}
+
+#problemPopup {
+    position: fixed;
+    inset: 0;
+    z-index: 15000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .72);
+}
+
+#problemPopup.hidden {
+    display: none;
+}
+
+#problemForm {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: min(620px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 20px;
+    border-radius: 12px;
+    background: #1a1a1a;
+    color: #eee;
+}
+
+#problemBtn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 650px) {
+    .community-browser-tools {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .community-preset-list { grid-template-columns: 1fr; }
 }
 
 #alertPopup {

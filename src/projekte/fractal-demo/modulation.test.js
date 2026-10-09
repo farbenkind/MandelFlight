@@ -76,10 +76,10 @@ test("clock sources follow global phase without independent state", () => {
 });
 
 test("musical divisions use exact beat durations and survive presets", () => {
-    const expected = [16, 8, 4, 2, 1, 0.5, 0.25, 0.125,
+    const expected = [128, 64, 32, 16, 8, 4, 2, 1, 0.5, 0.25, 0.125,
         3, 1.5, 0.75, 0.375, 0.1875,
         4 / 3, 2 / 3, 1 / 3, 1 / 6, 1 / 12];
-    assert.equal(beatDivisions.length, 18);
+    assert.equal(beatDivisions.length, 21);
     beatDivisions.forEach((entry, index) => {
         assert.equal(entry.beats, expected[index]);
         for (const cycles of [0, 0.25, 0.5, 0.75, 1, 4, 16]) {

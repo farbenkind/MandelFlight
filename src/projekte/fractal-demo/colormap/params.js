@@ -89,6 +89,7 @@ export const cmapSections = [
             knobs: [
                 knob("phaseShift", "phaseShift", 0, "phaseShift"),
                 knob("hueShift", "hueShift", 0, "hueShift"),
+                knob("pastel", "Pastel", 0, "pastel"),
             ],
         }],
     },

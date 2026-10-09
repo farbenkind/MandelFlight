@@ -138,6 +138,17 @@ fn shiftHue(rgb: vec3<f32>, shift: f32) -> vec3<f32> {
     return hsvToRgb(vec3<f32>(fract(hsv.x + turns), hsv.y, hsv.z));
 }
 
+fn pastelColor(rgb: vec3<f32>, amount: f32) -> vec3<f32> {
+    let strength = clamp(amount, 0.0, 1.0);
+    if (strength == 0.0) {
+        return rgb;
+    }
+    let hsv = rgbToHsv(clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0)));
+    let saturation = hsv.y * (1.0 - 0.8 * strength);
+    let value = mix(hsv.z, 1.0, 0.25 * strength);
+    return hsvToRgb(vec3<f32>(hsv.x, saturation, value));
+}
+
 @compute @workgroup_size(64)
 fn cm_main(@builtin(global_invocation_id) gid : vec3<u32>) {
     if (gid.x >= 1024u) { return; }
@@ -155,7 +166,7 @@ fn cm_main(@builtin(global_invocation_id) gid : vec3<u32>) {
     let r = primcolmap2(xr, a.amount_r * a.amount_all, clamp(a.shape_r + a.shape_all - 0.5, 0.0, 1.0), clamp(a.pow_r + a.pow_all - 0.5, 0.0, 1.0), a.pos_r + a.pos_all, a.mult_r + a.mult_all, a.phaseShift);
     let g = primcolmap2(xg, a.amount_g * a.amount_all, clamp(a.shape_g + a.shape_all - 0.5, 0.0, 1.0), clamp(a.pow_g + a.pow_all - 0.5, 0.0, 1.0), a.pos_g + a.pos_all, a.mult_g + a.mult_all, a.phaseShift);
     let b = primcolmap2(xb, a.amount_b * a.amount_all, clamp(a.shape_b + a.shape_all - 0.5, 0.0, 1.0), clamp(a.pow_b + a.pow_all - 0.5, 0.0, 1.0), a.pos_b + a.pos_all, a.mult_b + a.mult_all, a.phaseShift);
-    let color = shiftHue(vec3<f32>(r, g, b), a.hueShift);
+    let color = pastelColor(shiftHue(vec3<f32>(r, g, b), a.hueShift), a.pastel);
     textureStore(
         cmTexWrite,
         vec2<i32>(i32(gid.x), 0),

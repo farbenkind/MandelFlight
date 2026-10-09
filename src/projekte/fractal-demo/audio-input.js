@@ -1,4 +1,5 @@
 import init, { update_audio, get_beats, set_sample_rate } from "./modcore.js";
+import { createAudioUpdates } from "./audio-updates.js";
 
 export async function startAudioInput(onBeatUpdate) {
     await init();
@@ -19,11 +20,11 @@ export async function startAudioInput(onBeatUpdate) {
     window.addEventListener("pointerdown", resume);
     window.addEventListener("keydown", resume);
 
-    pcmNode.port.onmessage = (event) => {
-        update_audio(event.data);
-    };
-
-    setInterval(() => {
-        onBeatUpdate(get_beats());
-    }, 25);
+    const update = createAudioUpdates({
+        sampleRate: audioContext.sampleRate,
+        updateAudio: update_audio,
+        getBeats: get_beats,
+        onBeatUpdate,
+    });
+    pcmNode.port.onmessage = event => update(event.data);
 }

@@ -1,4 +1,7 @@
 const divisions = [
+    ["32B", "32 Bars", 128],
+    ["16B", "16 Bars", 64],
+    ["8B", "8 Bars", 32],
     ["4B", "4 Bars", 16],
     ["2B", "2 Bars", 8],
     ["1B", "1 Bar", 4],

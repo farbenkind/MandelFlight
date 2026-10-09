@@ -27,8 +27,12 @@ optimizations. A Windows mutex serializes build and copy steps across dev
 servers and manual builds. Run only one dev server to avoid duplicate work.
 For a one-off WASM build, run `npm run wasm:build`.
 
-Audio analysis uses the actual AudioContext sample rate. Bass-onset beat
-tracking uses threshold hysteresis and a 200 ms refractory period; rejected
+Audio analysis uses the actual AudioContext sample rate. Beat updates are
+driven by AudioWorklet sample messages at 40 Hz, not by a main-thread
+interval that browsers may throttle to roughly 1 Hz in a background editor tab.
+The audio context must remain running; this does not bypass browser suspension
+or guarantee real-time scheduling under heavy load.
+Bass-onset beat tracking uses threshold hysteresis and a 200 ms refractory period; rejected
 short triggers do not reset the beat clock. The first valid interval sets BPM
 directly, up to eight accepted intervals are averaged and smoothed to reduce
 FFT-block timing jitter, and pauses over two seconds restart
@@ -60,11 +64,92 @@ detected musical downbeat. Sampling/select changes do not start a new clock.
   without editor controls; use the editor's Fullscreen button to open the
   current view and colormap state in a new tab. Editor-only mod-panel dragging
   is initialized only in the editor, not in the fullscreen runtime.
+  Mouse-wheel zoom and primary-pointer drag use the same navigation in both
+  views. Navigation synchronizes bidirectionally with the originating editor
+  and its other fullscreen tabs; presets also synchronize the view.
+  Color/audio updates refresh both the palette and the computed fractal image
+  without overwriting the current navigation. Hide the
+  editor overlay with E to navigate its canvas, then show it again to edit.
+  The editor overlay is visible by default when opening the demo.
+  Fullscreen without an originating editor remains independently navigable.
 - `LICENSE` contains the GNU GPL v3 license accompanying the source project.
 - `src/projekte/function-plotter/` is the function-chain plotter (local only).
-- `functions/api/presets/` is the preset API (Cloudflare Pages Function + KV).
+- `supabase/migrations/` contains the Community preset database and access policies.
+- `functions/api/turnstile.js` verifies optional Cloudflare Turnstile challenges.
 
-## Server-side presets (Cloudflare Pages)
+## Community presets (Supabase)
+
+The Presets browser uses three categories: **Featured**, **Community**, and
+**My Presets**. Public presets can be browsed and loaded without an account.
+Google/GitHub OAuth users can save private presets, publish/unpublish their
+own work, like community presets, and save one private copy of another user's
+preset. A Featured badge is metadata on the original community record; the
+author and community counters are retained. Featured presets default to the
+curated order; other lists default to newest, and can be sorted by name, likes,
+views, or saves. Search matches name, description, and author.
+
+New full-visual payloads use `schemaVersion: 1`, `kind: "visual"` and separate
+`geometry`, `color`, and `post` objects. The UI only saves and loads complete
+Visual presets. Existing version-1 and version-2 formats remain readable, and
+old browser-local presets can be imported into the signed-in account.
+
+Database-enforced safeguards in the migration:
+
+- Maximum 50 presets and 5 MB of preset JSON per account; 200 KB per preset.
+- Maximum 300 MB aggregate preset JSON, 30 preset writes and 60 Likes per hour,
+  and five problem reports per day per account. Problem-report text is capped at
+  25 MB aggregate.
+- One Like per user/preset. Authenticated views are deduplicated to one per user
+  per UTC day (deduplication rows are retained for 30 days); Saves create at
+  most one private copy per user/source preset.
+- Supabase Row Level Security keeps private presets and problem reports private.
+  Counters and Featured metadata cannot be set directly by a client.
+- Problem reports include title, description, category, app version, browser,
+  operating system, client timestamp, and the currently loaded preset ID when
+  available. Browser and OS values are limited in size.
+
+### First deployment setup
+
+1. Create a Supabase project. In its SQL Editor, run
+   `supabase/migrations/202610090001_community_presets.sql`.
+2. Enable Google and GitHub in Supabase Authentication > Sign In / Providers.
+   Add each provider's OAuth client ID/secret there (not in this repository).
+   Configure the provider callback shown by Supabase, then set the Supabase
+   Site URL to `https://mandelflight.pages.dev` and add the production and local
+   app URLs to the redirect allow-list.
+3. Copy `.env.example` to `.env.local` and fill in the Supabase Project URL and
+   public anon/publishable key. The key is intentionally used by the browser;
+   **never** put a Supabase service-role key in a `VITE_` variable or the repo.
+4. In Cloudflare Pages project `mandelflight`, configure the same
+   `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as **build-time
+   environment variables**, then build/deploy with `npm run deploy`.
+5. Sign in once with Martin's account. In Supabase SQL Editor, promote that
+   account for curation with:
+   `update public.profiles set is_admin = true where id = (select id from auth.users where email = 'YOUR_EMAIL');`
+   Admins can mark/unmark public presets as Featured in the browser. Keep the
+   account email private and run this only in the Supabase dashboard.
+6. To preserve the old shared KV library, set `SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY`, and `LEGACY_PRESET_OWNER_ID` in a private
+   PowerShell session, then run `npm run presets:import-legacy`. The script
+   converts old version-1/version-2 records, imports them as public Community
+   presets, skips same-owner/name duplicates, and never writes the service key
+   into the repository or browser bundle. Prompt for the key rather than
+   typing it into a command:
+   `$env:SUPABASE_SERVICE_ROLE_KEY = [System.Net.NetworkCredential]::new("", (Read-Host "Service role key" -AsSecureString)).Password`
+   Curate Featured from the new UI.
+
+Cloudflare Turnstile is optional. To require a challenge for problem reports,
+create a Turnstile widget for `mandelflight.pages.dev`, set its public site key
+as `VITE_TURNSTILE_SITE_KEY` at build time, and set the secret
+`TURNSTILE_SECRET_KEY` in Cloudflare Pages Functions. The server verifies the
+single-use token and checks the hostname. The database quotas/rate limits remain
+active independently. For local Pages Function testing, use an ignored
+`.dev.vars` file for the Turnstile secret and run `npm run cf:dev`.
+
+Supabase's free quotas and Cloudflare Workers/Pages limits can change; check
+the providers' current plans before public launch. The old shared-password KV
+preset endpoint in `functions/api/presets/` is read-only and is no longer used
+by the browser UI; PUT/DELETE return HTTP 410.
 
 Modulation controls are declared in each source/transform's `params`:
 `ui: "slider"` uses `min`, `max`, optional `exp` and a normalized UI `step`;
@@ -91,6 +176,16 @@ on the GPU, preserving HSV saturation and value (not perceptual luminance).
 Its 0-1 range represents a full turn: 0 and 1 are neutral, 0.5 is 180 degrees.
 The existing knob modulation and preset storage also apply to HueShift.
 
+The miscCmap Pastel knob softens the final color after HueShift, preserving
+HSV hue. For strength p in 0-1, saturation becomes `S * (1 - 0.8*p)`
+and brightness becomes `V + (1-V) * 0.25*p`. At 0 the original RGB is
+returned unchanged; at 0.5 saturation is 60% of its original value and
+brightness moves 12.5% toward white; at 1 saturation is 20% and brightness
+moves 25% toward white. Black therefore lifts to dark gray, while white stays
+white. This is a global color look, not a spatial watercolor effect.
+Palette and RGB curves share the same result. Modulation, fullscreen and
+presets use the standard schema; older presets default Pastel to 0.
+
 Colormap knobs always show their parameter name below the dial. Hovering over
 the dial or dragging it shows the current GPU parameter value (including
 modulation) above it, rounded to three decimals.
@@ -116,12 +211,10 @@ Shift works with WaveMix=0. Existing presets retain their values, but Shift
 now rolls the selected section instead of offsetting the final output or
 changing only the cosine wave's internal phase.
 
-Live: https://mandelflight.pages.dev (Pages project mandelflight, KV binding PRESETS is set in `wrangler.toml`).
+Live: https://mandelflight.pages.dev (Cloudflare Pages project `mandelflight`).
 
 Local development with hot reload: `npm run dev` (Vite prints the local URL).
 Deploy the current build to Pages: `npm run deploy`.
 This builds first, then uploads `dist` to the `mandelflight` Pages project on branch `main`.
-The write password is the Pages secret `PRESET_WRITE_KEY` (`npx wrangler pages secret put PRESET_WRITE_KEY --project-name mandelflight`).
 
-Reading is public; PUT/DELETE need the header `x-api-key: <PRESET_WRITE_KEY>`.
 Test locally with `npm run cf:dev` (serves on http://127.0.0.1:8788).

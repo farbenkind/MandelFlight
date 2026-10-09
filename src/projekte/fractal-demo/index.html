@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>MandelFlight - Fractal Demo</title>
+    <meta name="app-version" content="0.0.0">
 
     <!-- Editor CSS -->
     <link id="editorCSS" rel="stylesheet" href="/src/projekte/fractal-demo/fractal.css">
@@ -29,30 +30,85 @@
     <canvas id="fractalCanvas" width="1920" height="1080"></canvas>
 
     <!-- EDITOR OVERLAY -->
-    <div id="cmOverlay" class="hidden">
+    <div id="cmOverlay">
 
         <canvas id="cmCanvas"></canvas>
         <canvas id="curveCanvas"></canvas>
 
-        <div id="xlutBar"></div>
+        <div id="editorToolbar">
+            <div id="xlutBar"></div>
+            <button id="presetBtn" type="button" class="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="presetPopup">Presets &#9662;</button>
+            <button id="problemBtn" type="button" class="button" disabled>🐞 Problem melden</button>
+        </div>
         <div id="cmKnobs"></div>
     </div>
     <div id="presetPopup" class="hidden">
-        <div id="presetPopupInner">
-            <h2 id="presetPopupTitle"></h2>
-
+        <div id="presetPopupInner" role="dialog" aria-modal="true" aria-labelledby="presetPopupTitle">
+            <div class="preset-header">
+                <h2 id="presetPopupTitle">MandelFlight Preset-Bibliothek</h2>
+                <button id="presetCloseBtn" type="button">Schliessen</button>
+            </div>
+            <p id="presetStatus" role="status"></p>
+            <p id="communityConfigNotice" role="status"></p>
+            <section class="community-auth">
+                <div id="authSignedOut">
+                    <span>Community-Funktionen:</span>
+                    <button id="authGoogleBtn" type="button">Mit Google anmelden</button>
+                    <button id="authGithubBtn" type="button">Mit GitHub anmelden</button>
+                </div>
+                <div id="authSignedIn" class="hidden">
+                    <span>Angemeldet als <strong id="authUserName"></strong></span>
+                    <button id="authSignOutBtn" type="button">Abmelden</button>
+                </div>
+            </section>
+            <nav class="community-tabs" aria-label="Preset-Kategorien" role="tablist">
+                <button type="button" role="tab" aria-selected="true" data-preset-category="featured">⭐ Featured</button>
+                <button type="button" role="tab" aria-selected="false" data-preset-category="community">🌍 Community</button>
+                <button type="button" role="tab" aria-selected="false" data-preset-category="mine">👤 My Presets</button>
+            </nav>
+            <div class="community-browser-tools">
+                <label>Suchen <input id="presetSearch" type="search" placeholder="Name, Beschreibung oder Autor"></label>
+                <label>Sortieren
+                    <select id="presetSort">
+                        <option value="default">Empfohlen / Neueste</option>
+                        <option value="name">Name A–Z</option>
+                        <option value="likes">Meiste Likes</option>
+                        <option value="views">Meiste Aufrufe</option>
+                        <option value="saves">Meiste Saves</option>
+                    </select>
+                </label>
+            </div>
+            <section id="communityPresetList" class="community-preset-list" aria-live="polite"></section>
+            <div class="preset-actions">
+                <button id="presetSaveAsBtn" type="button">Aktuelle Ansicht als Preset speichern</button>
+            </div>
             <div id="presetSaveUI" class="hidden">
-                <input id="presetNameInput" placeholder="Preset-Name">
-                <button id="presetSaveBtn" class="button">Lokal speichern</button>
-                <button id="presetSaveRemoteBtn" class="button">Auf Server speichern</button>
+                <label>Name <input id="presetNameInput" placeholder="Neuer Preset-Name" maxlength="64"></label>
+                <label>Beschreibung <textarea id="presetDescriptionInput" maxlength="500" rows="2"></textarea></label>
+                <label class="preset-publish"><input id="presetPublishInput" type="checkbox"> Öffentlich in der Community veröffentlichen</label>
+                <button id="presetSaveBtn" type="button" class="button">Speichern</button>
             </div>
-
-            <div id="presetLoadUI" class="hidden">
-                <ul id="presetList"></ul>
-            </div>
-
-            <button id="presetCloseBtn" class="button">Close</button>
         </div>
+    </div>
+    <div id="problemPopup" class="hidden">
+        <form id="problemForm" role="dialog" aria-modal="true" aria-labelledby="problemPopupTitle">
+            <div class="preset-header">
+                <h2 id="problemPopupTitle">🐞 Problem melden</h2>
+                <button id="problemCloseBtn" type="button">Schliessen</button>
+            </div>
+            <p>Browser, Betriebssystem, App-Version und Zeitpunkt werden zur Diagnose automatisch mitgesendet.</p>
+            <label>Titel <input id="problemTitle" required minlength="3" maxlength="120"></label>
+            <label>Kategorie
+                <select id="problemCategory">
+                    <option>Bug</option><option>UI</option><option>Performance</option>
+                    <option>Feature-Idee</option><option>Sonstiges</option>
+                </select>
+            </label>
+            <label>Beschreibung <textarea id="problemDescription" required minlength="10" maxlength="5000" rows="6"></textarea></label>
+            <div id="problemTurnstile"></div>
+            <p id="problemStatus" role="status"></p>
+            <button id="problemSubmitBtn" type="submit">Bericht senden</button>
+        </form>
     </div>
     <div id="alertPopup" class="hidden">
         <div id="alertPopupInner">

@@ -14,6 +14,7 @@ const isEditor = Boolean(document.getElementById("cmKnobs"));
 const launchToken = new URLSearchParams(window.location.hash.slice(1)).get("state");
 const launchStateKey = launchToken ? `fractalFullscreenState:${launchToken}` : null;
 const fullscreenChannels = new Set();
+let fullscreenChannel = null;
 let launchState = null;
 if (launchStateKey) {
     const serializedState = localStorage.getItem(launchStateKey);
@@ -53,7 +54,7 @@ context.configure({
 
 
 ///////// /// FractalParams - uniforms
-const fractalRenderer = createFractalRenderer({ canvas, context, device, format });
+const fractalRenderer = createFractalRenderer({ canvas, context, device, format, onViewChange: broadcastView });
 const { cmSize, colormapTexture: CMAP_Texture } = fractalRenderer;
 if (launchState?.fractalParams) fractalRenderer.setView(launchState.fractalParams);
 
@@ -112,8 +113,18 @@ function getSharedState() {
 
 function broadcastSharedState() {
     if (!isEditor) return;
-    const message = { type: "state", state: getSharedState() };
+    const { fractalParams, ...state } = getSharedState();
+    const message = { type: "state", state };
     for (const channel of fullscreenChannels) channel.postMessage(message);
+}
+
+function broadcastView(view) {
+    const message = { type: "view", fractalParams: view };
+    if (isEditor) {
+        for (const channel of fullscreenChannels) channel.postMessage(message);
+    } else {
+        fullscreenChannel?.postMessage(message);
+    }
 }
 
 if (isEditor) {
@@ -139,10 +150,7 @@ const xlutUI = createXlutUI({
     root: document.getElementById("xlutBar"),
     cmSize,
     setLut: colormapGpu.setLut,
-    onChange: () => {
-        colormapGpu.update(packCMParams());
-        broadcastSharedState();
-    },
+    onChange: refreshCMEditor,
 });
 if (launchState?.xlut) xlutUI.setChains(launchState.xlut, false);
 
@@ -314,9 +322,22 @@ if (isEditor) {
 ///////////////////////////////////////////////////////////
 
 const presets = isEditor
-    ? (await import("./presets.js")).createPresets({ fractalRenderer, packCMParams, xlutUI, onChange: refreshCMEditor })
+    ? (await import("./presets.js")).createPresets({
+        fractalRenderer, packCMParams, xlutUI,
+        onChange: () => {
+            broadcastView(fractalRenderer.getView());
+            refreshCMEditor();
+        },
+    })
     : null;
 
+if (isEditor) {
+    const { createProblemReport } = await import("./problem-report.js");
+    createProblemReport({
+        getCurrentPresetId: () => presets.getCurrentPresetId(),
+        getSession: () => presets.getSession(),
+    });
+}
 
 
 
@@ -356,10 +377,15 @@ function loadView() {
 
 if (!isEditor && launchToken) {
     const channel = new BroadcastChannel(`mandelflight-fullscreen:${launchToken}`);
+    fullscreenChannel = channel;
     channel.addEventListener("message", (event) => {
+        if (event.data?.type === "view") {
+            fractalRenderer.setView(event.data.fractalParams);
+            return;
+        }
         if (event.data?.type !== "state") return;
         const state = event.data.state;
-        fractalRenderer.setView(state.fractalParams);
+        if (state.fractalParams) fractalRenderer.setView(state.fractalParams);
         Object.assign(knobs, deserializeKnobs(state.knobs, cmapParams));
         xlutUI.setChains(state.xlut, false);
     });
@@ -374,6 +400,10 @@ document.getElementById("fullscreenBtn")?.addEventListener("click", () => {
     const token = crypto.randomUUID();
     const channel = new BroadcastChannel(`mandelflight-fullscreen:${token}`);
     channel.addEventListener("message", (event) => {
+        if (event.data?.type === "view") {
+            fractalRenderer.setView(event.data.fractalParams);
+            broadcastView(fractalRenderer.getView());
+        }
         if (event.data?.type === "ready") channel.postMessage({ type: "state", state: getSharedState() });
         if (event.data?.type === "closed") {
             channel.close();
@@ -399,6 +429,7 @@ window.addEventListener("keyup", ev => {
 window.addEventListener("keydown", ev => {
     if (!isEditor) return;
     if (presets.isOpen()) return;
+    if (ev.target.closest("input, select, textarea, button") || ev.target.isContentEditable) return;
     if (ev.key === "s") presets.openSave();
     if (ev.key === "l") presets.openLoad();
     if (ev.key === "e") {
@@ -429,6 +460,7 @@ refreshCMEditor();
 fractalRenderer.render();          // und anzeigen
 
 if (!launchState?.fractalParams) loadView();
+if (isEditor && !launchState) await presets.loadDefault();
 //overlay.classList.toggle("hidden");
 //document.querySelector('.mod-toggle[data-param="pow-b"]').click();
 //document.querySelector('.mod-toggle[data-param="phaseShift"]').click();

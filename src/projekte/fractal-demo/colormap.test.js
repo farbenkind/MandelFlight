@@ -51,6 +51,22 @@ test("Shift ends each xCmap column and retains channel/ALL values in presets and
     });
 });
 
+test("Pastel is neutral in old presets and retains modulated values in new snapshots", () => {
+    const misc = cmapSections.find(section => section.id === "miscCmap");
+    assert.deepEqual(misc.panels[0].knobs.map(param => param.id), ["phaseShift", "hueShift", "pastel"]);
+    const restored = deserializeKnobs(serializeKnobs({ hueShift: new KnobState(0.25) }), cmapParams);
+    assert.deepEqual(restored.pastel, new KnobState(0));
+    restored.pastel.liveValue = 0.5;
+    restored.pastel.cmValue = 0.75;
+    restored.pastel.modEnabled = true;
+    const snapshot = deserializeKnobs(JSON.parse(JSON.stringify(serializeKnobs(restored))), cmapParams);
+    assert.equal(snapshot.pastel.liveValue, 0.5);
+    assert.equal(snapshot.pastel.cmValue, 0.75);
+    assert.equal(snapshot.pastel.modEnabled, true);
+    assert.equal(packCMParams(snapshot)[cmapParams.findIndex(param => param.id === "pastel")], 0.75);
+    assert.ok(cmapStructWGSL.includes("pastel : f32,"));
+});
+
 test("knob value labels display final values without changing the base/punch visualization", () => {
     const classes = new Map();
     const properties = new Map();
