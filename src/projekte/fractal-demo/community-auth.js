@@ -5,17 +5,26 @@ export function getSupabaseClient() {
     return supabase;
 }
 
-export async function signIn(provider) {
+export async function signIn(provider, { login } = {}) {
     const db = getSupabaseClient();
+    const options = {
+        redirectTo: window.location.origin + window.location.pathname,
+    };
+    if (login) {
+        options.queryParams = {
+            login,
+            prompt: "login",
+        };
+    }
     const { error } = await db.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: window.location.origin + window.location.pathname },
+        options,
     });
     if (error) throw new Error(error.message);
 }
 
 export async function signOut() {
-    const { error } = await getSupabaseClient().auth.signOut();
+    const { error } = await getSupabaseClient().auth.signOut({ scope: "local" });
     if (error) throw new Error(error.message);
 }
 
@@ -24,4 +33,3 @@ export async function updateDisplayName(userId, displayName) {
         .update({ display_name: displayName }).eq("id", userId);
     if (error) throw new Error(error.message);
 }
-

@@ -11,7 +11,7 @@ const CATEGORIES = ["featured", "community", "mine"];
 const LOCAL_KEY = "presets";
 
 export function createPresets({
-    fractalRenderer, xlutUI, communitySession, onSignIn, onSignOut, onChange,
+    fractalRenderer, xlutUI, communitySession, onSignIn, onSignOut, onSwitchAccount, onChange,
     onSetLandingPreset,
 }) {
     const popup = document.getElementById("presetPopup");
@@ -357,6 +357,7 @@ export function createPresets({
         execute: run,
         onSignIn,
         onSignOut,
+        onSwitchAccount,
         onStateChange: onCommunityStateChange,
         onError: report,
     });

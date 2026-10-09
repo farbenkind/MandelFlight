@@ -3,6 +3,7 @@ export function createCommunityAuthUI({
     execute,
     onSignIn,
     onSignOut,
+    onSwitchAccount,
     onStateChange,
     onError,
 }) {
@@ -12,17 +13,18 @@ export function createCommunityAuthUI({
     const problemButton = document.getElementById("problemBtn");
     const configNotice = document.getElementById("communityConfigNotice");
     const landingPresetAdminControls = document.getElementById("landingPresetAdminControls");
+    const accountInput = document.getElementById("authGithubAccountInput");
 
     function render(state) {
         const user = state.user;
         landingPresetAdminControls.classList.toggle("hidden", !state.isAdmin);
         signedOut.classList.toggle("hidden", Boolean(user));
         signedIn.classList.toggle("hidden", !user);
-        userName.textContent =
-            user?.user_metadata?.full_name
+        const displayName = user?.user_metadata?.user_name
+            || user?.user_metadata?.full_name
             || user?.user_metadata?.name
-            || user?.email
             || "Angemeldet";
+        userName.textContent = user?.email ? `${displayName} (${user.email})` : displayName;
         problemButton.disabled = !user;
         onStateChange(state);
     }
@@ -32,6 +34,15 @@ export function createCommunityAuthUI({
     });
     document.getElementById("authSignOutBtn").addEventListener("click", () => {
         void execute(onSignOut);
+    });
+    document.getElementById("authSwitchAccountBtn").addEventListener("click", () => {
+        const login = accountInput.value.trim();
+        if (!login) {
+            onError(new Error("Gib deinen GitHub-Benutzernamen oder deine GitHub-E-Mail ein."));
+            accountInput.focus();
+            return;
+        }
+        void execute(() => onSwitchAccount(login));
     });
 
     if (communitySession) {

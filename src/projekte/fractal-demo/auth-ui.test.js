@@ -13,5 +13,7 @@ test("Google sign-in is absent from every app entry page while GitHub remains", 
         assert.match(html, /authGithubBtn/);
         assert.match(html, /id="landingPresetAdminControls" class="hidden"/);
         assert.match(html, /id="setLandingPresetBtn"/);
+        assert.match(html, /id="authSwitchAccountBtn"/);
+        assert.match(html, /id="authGithubAccountInput"/);
     }
 });

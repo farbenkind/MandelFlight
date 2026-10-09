@@ -26,6 +26,8 @@ function createDocument() {
         "landingPresetAdminControls",
         "authGithubBtn",
         "authSignOutBtn",
+        "authGithubAccountInput",
+        "authSwitchAccountBtn",
     ].map(id => [id, createElement()]));
     return {
         elements,
@@ -44,6 +46,7 @@ test("community auth UI reflects session state and binds auth actions", async ()
         let publishState;
         const actions = [];
         const states = [];
+        let selectedLogin = null;
         const session = {
             subscribe(listener) {
                 publishState = listener;
@@ -53,9 +56,13 @@ test("community auth UI reflects session state and binds auth actions", async ()
         };
         createCommunityAuthUI({
             communitySession: session,
-            execute: action => { actions.push(action); },
+            execute: action => {
+                actions.push(action);
+                return Promise.resolve();
+            },
             onSignIn: async () => {},
             onSignOut: async () => {},
+            onSwitchAccount: async login => { selectedLogin = login; },
             onStateChange: state => states.push(state),
             onError: error => { throw error; },
         });
@@ -66,7 +73,7 @@ test("community auth UI reflects session state and binds auth actions", async ()
         });
         assert.equal(fakeDocument.elements.get("authSignedOut").classList.toggles.get("hidden"), true);
         assert.equal(fakeDocument.elements.get("authSignedIn").classList.toggles.get("hidden"), false);
-        assert.equal(fakeDocument.elements.get("authUserName").textContent, "user@example.com");
+        assert.equal(fakeDocument.elements.get("authUserName").textContent, "Angemeldet (user@example.com)");
         assert.equal(fakeDocument.elements.get("problemBtn").disabled, false);
         assert.equal(fakeDocument.elements.get("landingPresetAdminControls").classList.toggles.get("hidden"), false);
         assert.equal(states.at(-1).isAdmin, true);
@@ -78,6 +85,13 @@ test("community auth UI reflects session state and binds auth actions", async ()
         assert.equal(actions.length, 2);
         assert.equal(typeof actions[0], "function");
         assert.equal(typeof actions[1], "function");
+
+        fakeDocument.elements.get("authGithubAccountInput").value = "vuih1723";
+        fakeDocument.elements.get("authSwitchAccountBtn").click();
+        assert.equal(actions.length, 3);
+        assert.equal(typeof actions[2], "function");
+        await actions[2]();
+        assert.equal(selectedLogin, "vuih1723");
     } finally {
         globalThis.document = originalDocument;
     }

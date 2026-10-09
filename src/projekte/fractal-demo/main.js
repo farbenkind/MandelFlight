@@ -243,6 +243,10 @@ const presets = isEditor
         communitySession,
         onSignIn: () => communitySignIn("github"),
         onSignOut: communitySignOut,
+        onSwitchAccount: async login => {
+            await communitySignOut();
+            await communitySignIn("github", { login });
+        },
         onSetLandingPreset: presetData => setLandingPreset(presetData, supabase),
         onChange: () => {
             broadcastView(fractalRenderer.getView());
