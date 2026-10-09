@@ -2,9 +2,17 @@
 
 **Stand:** 2026-10-09  
 **Zweck:** Wiederauffindbare Bestandsaufnahme und Refactoring-Plan. Dieses
-Dokument beschreibt ein Zielbild; es beauftragt oder dokumentiert keine
-bereits ausgeführten Refactorings. Funktionale Änderungen sind ausdrücklich
-nicht Teil des Ziels.
+Dokument beschreibt das Zielbild und hält bereits ausgeführte Schritte unter
+„Fortschritt“ fest. Funktionale Änderungen sind ausdrücklich nicht Teil des
+Ziels.
+
+## Fortschritt
+
+- **2026-10-09:** Die Modulationsauswertung wurde aus `main.js` in
+  [modulation-engine.js](../src/projekte/fractal-demo/modulation-engine.js)
+  extrahiert. `main.js` ruft die Engine weiterhin an derselben Stelle im
+  Audio-Update auf; die Engine mutiert dieselben Knob-Zustände und hat eigene
+  Regressionstests. Preset-, Renderer- und UI-Verträge blieben unverändert.
 
 ## Kurzfassung
 
@@ -15,17 +23,20 @@ eigene Unterstruktur existiert vor allem für `ui` und `colormap`.
 
 Die wichtigsten Risiken liegen an den Grenzen zwischen Komponenten:
 
-- [main.js](../src/projekte/fractal-demo/main.js) koordiniert zu viele
-  Features und enthält neben Initialisierung auch Modulationsauswertung,
-  Audio-Anschluss, Preset- und Fullscreen-Verknüpfungen.
+- [main.js](../src/projekte/fractal-demo/main.js) koordiniert weiterhin viele
+  Features: Initialisierung, Audio-Anschluss, Preset- und
+  Fullscreen-Verknüpfungen. Die Modulationsauswertung wurde inzwischen
+  ausgelagert.
 - [presets.js](../src/projekte/fractal-demo/presets.js) mischt
   Bibliotheks-UI, Aktionen, Auth-/Profilstatus und Legacy-Import.
 - Die Auth-Session wird in der Preset-Oberfläche verwaltet, obwohl OAuth-Aufrufe
   bereits in [community-auth.js](../src/projekte/fractal-demo/community-auth.js)
   liegen.
 - [modulation.js](../src/projekte/fractal-demo/modulation.js) vereint
-  Quelltypen, Transformations-Registry, Fabriken und Parameterein-/ausgabe;
-  die Modulationsevaluation liegt dagegen in `main.js`.
+  Quelltypen, Transformations-Registry, Fabriken und Parameterein-/ausgabe.
+  Die Evaluation liegt jetzt in
+  [modulation-engine.js](../src/projekte/fractal-demo/modulation-engine.js);
+  deren Aufruf bleibt in `main.js`.
 - [ui/mod-overlay.js](../src/projekte/fractal-demo/ui/mod-overlay.js) und
   [ui/dialogs.js](../src/projekte/fractal-demo/ui/dialogs.js) greifen direkt
   auf globale DOM-Elemente und/oder globalen Knob-Zustand zu.
@@ -41,10 +52,10 @@ dann in kleinen, testsicheren Gruppen Dateien verschieben.
 
 | Bereich | Dateien und Befund |
 |---|---|
-| App-Start | [main.js](../src/projekte/fractal-demo/main.js), ca. 341 Zeilen. Initialisiert WebGPU, Renderer, Colormap, Audio, Knobs, Modulation, Presets, Problemberichte und Fullscreen-Kommunikation. |
+| App-Start | [main.js](../src/projekte/fractal-demo/main.js), ca. 240 Zeilen. Initialisiert WebGPU, Renderer, Colormap, Audio, Knobs, Modulation, Presets, Problemberichte und Fullscreen-Kommunikation. |
 | Fractal Engine | [fractal-renderer.js](../src/projekte/fractal-demo/fractal-renderer.js), ca. 218 Zeilen, enthält GPU-Ressourcen und eingebetteten WGSL-Code. Navigation liegt separat in [fractal-navigation.js](../src/projekte/fractal-demo/fractal-navigation.js). |
 | Colormap | [colormap/](../src/projekte/fractal-demo/colormap) ist bereits fachlich gruppiert: GPU-Code, Parameter und WGSL-Shader. |
-| Modulation | [modulation.js](../src/projekte/fractal-demo/modulation.js), ca. 235 Zeilen; [knob-state.js](../src/projekte/fractal-demo/knob-state.js) enthält Zustand und Modulationsserialisierung. Die Evaluation steht in `main.js`. |
+| Modulation | [modulation.js](../src/projekte/fractal-demo/modulation.js), ca. 235 Zeilen; [knob-state.js](../src/projekte/fractal-demo/knob-state.js) enthält Zustand und Modulationsserialisierung. Die Evaluation liegt in [modulation-engine.js](../src/projekte/fractal-demo/modulation-engine.js), die `main.js` aufruft. |
 | Audio | [audio-input.js](../src/projekte/fractal-demo/audio-input.js) verbindet WebAudio, Worklet und WASM; [audio-updates.js](../src/projekte/fractal-demo/audio-updates.js) taktet Updates; [beat-divisions.js](../src/projekte/fractal-demo/beat-divisions.js) enthält Beat-Zeitbasis. |
 | Presets | [presets.js](../src/projekte/fractal-demo/presets.js), ca. 381 Zeilen. Formatlogik ist in [preset-format.js](../src/projekte/fractal-demo/preset-format.js), Supabase-Zugriffe in [community-store.js](../src/projekte/fractal-demo/community-store.js). |
 | Auth | [community-auth.js](../src/projekte/fractal-demo/community-auth.js) kapselt OAuth-Funktionen; [supabase-client.js](../src/projekte/fractal-demo/supabase-client.js) erzeugt den Client. Auth-Session, Profilabfrage und Auth-UI liegen in `presets.js`. |
@@ -177,10 +188,10 @@ fachliche Regeln bleiben beim jeweiligen Feature.
 
 | Bestehender Pfad | Ziel | Migrationshinweis |
 |---|---|---|
-| [main.js](../src/projekte/fractal-demo/main.js) | `src/app/fractal-demo/` plus Feature-Module | Nicht nur umbenennen. Zuerst die Modulationsauswertung und Fullscreen-/Audio-Orchestrierung auslagern, dann einen dünnen Bootstrap behalten. |
+| [main.js](../src/projekte/fractal-demo/main.js) | `src/app/fractal-demo/` plus Feature-Module | Nicht nur umbenennen. Modulationsauswertung ist bereits ausgelagert; als Nächstes Fullscreen-/Audio-Orchestrierung trennen und schrittweise einen dünnen Bootstrap behalten. |
 | [fractal-renderer.js](../src/projekte/fractal-demo/fractal-renderer.js), [fractal-navigation.js](../src/projekte/fractal-demo/fractal-navigation.js) | `src/features/fractal-engine/renderer` und `navigation` | Als gemeinsame Engine-Grenze erhalten. Renderer-API stabil halten. |
 | [colormap/](../src/projekte/fractal-demo/colormap) | `src/features/colormap/` | Schon relativ gut separiert; hauptsächlich Pfadänderung. |
-| [modulation.js](../src/projekte/fractal-demo/modulation.js), [knob-state.js](../src/projekte/fractal-demo/knob-state.js) | `src/features/modulation/` | Registry, Modell, Evaluation und Serialisierung beim Umzug entflechten. |
+| [modulation.js](../src/projekte/fractal-demo/modulation.js), [knob-state.js](../src/projekte/fractal-demo/knob-state.js), [modulation-engine.js](../src/projekte/fractal-demo/modulation-engine.js) | `src/features/modulation/` | Evaluation ist extrahiert; Registry, Modell und Serialisierung beim späteren Umzug weiter entflechten. |
 | [audio-input.js](../src/projekte/fractal-demo/audio-input.js), [audio-updates.js](../src/projekte/fractal-demo/audio-updates.js), [pcm-processor.js](../src/projekte/fractal-demo/pcm-processor.js), [beat-divisions.js](../src/projekte/fractal-demo/beat-divisions.js) | `src/features/audio/` | Capture, Worklet, Verarbeitung und Zeitbasis bündeln, ohne Audio-Verhalten zu ändern. |
 | [presets.js](../src/projekte/fractal-demo/presets.js), [preset-format.js](../src/projekte/fractal-demo/preset-format.js) | `src/features/presets/` | Formatkern getrennt lassen; Bibliothekscontroller, Karten und lokale Importe schrittweise trennen. |
 | [community-store.js](../src/projekte/fractal-demo/community-store.js) | `src/features/presets/data/` plus Problem-Report-Repository | Preset- und Problembericht-Abfragen in ihren jeweiligen Featuregrenzen halten. |
@@ -215,8 +226,8 @@ fachliche Regeln bleiben beim jeweiligen Feature.
    den Auth-Zustand, statt ihn zu verwalten.
 3. Preset-UI auf Bibliothekscontroller, Preset-Karten und lokale Legacy-Importe
    aufteilen. `preset-format.js` als Formatkern behalten.
-4. Modulationsauswertung aus `main.js` in eine DOM-freie Engine verschieben.
-   Das Overlay arbeitet über explizite Abhängigkeiten und Callbacks.
+4. Modulations-Engine weiter entkoppeln: Quellen und Knob-Zustand sauber
+   trennen. Das Overlay arbeitet über explizite Abhängigkeiten und Callbacks.
 5. `submitProblem` aus `community-store.js` in den Problemberichte-Bereich
    verschieben.
 6. Doppelte App-Einstiegsseiten konsolidieren oder Unterschiede explizit
@@ -263,7 +274,7 @@ fachliche Regeln bleiben beim jeweiligen Feature.
 2. Audio- und Fractal-Module gruppieren und Imports korrigieren.
 3. Auth-Session von der Preset-UI trennen.
 4. Problemberichte aus dem Community-Preset-Store lösen.
-5. Preset-Controller und Modulations-Evaluator in kleinere Module teilen.
+5. Preset-Controller und Modulations-Registries in kleinere Module teilen.
 6. Overlay-Abhängigkeiten explizit machen.
 7. Doppelte HTML-Einstiege und CSS-Struktur separat angehen.
 8. WASM-Artefakte und Deploypfade zuletzt bereinigen.

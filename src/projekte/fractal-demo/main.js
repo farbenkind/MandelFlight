@@ -1,14 +1,13 @@
 import { createFractalRenderer } from "./fractal-renderer.js";
 import { startAudioInput } from "./audio-input.js";
 import { createColormapGpu } from "./colormap/colormap-gpu.js";
-import { pi, debug, fmod, symExp, log, clamp } from "./util.js";
-import { ModMode, BaseMode, ModTransfrom, sliderMod, KnobState, knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
+import { debug, makeDraggable } from "./util.js";
+import { KnobState, knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
 import { cmapSections, cmapParams, packCMParams as packParams } from "./colormap/params.js";
 import { buildCmapUI } from "./ui/cmap-ui.js";
 import { updateKnobVisual } from "./ui/knob-visual.js";
 import { createXlutUI } from "./ui/xlut-ui.js";
-import { makeDraggable } from "./util.js";
-import { makeEnv, makeConst, makeOsc1, makeLinearTransform, makePowerTransform, makeSourceFromName, createSourceContext } from "./modulation.js";
+import { applyModulations } from "./modulation-engine.js";
 
 const isEditor = Boolean(document.getElementById("cmKnobs"));
 const launchToken = new URLSearchParams(window.location.hash.slice(1)).get("state");
@@ -179,19 +178,6 @@ if (isEditor) initModWindow();
 //
 /////////////////////////////////////////////////////////////////////////////
 
-/*
-import init, { ModCore } from "./modcore.js";
-
-let core;
-await init();
-core = new ModCore();
-
-core.init_params(knobs);
-
-const fastEnv = makeEnv({ attack: .9, decay: .5 });
-const slowEnv = makeEnv({ attack: .3, decay: 0.9 });
-*/
-
 function refreshCMEditor() {
     if (isEditor) {
         document.querySelectorAll(".knob").forEach(element => {
@@ -205,90 +191,8 @@ function refreshCMEditor() {
 }
 
 function updateCMEditor() {
-    const sourceContext = createSourceContext();
-    for (const param in knobs) {
-
-        const knob = knobs[param];
-
-        knob.modEnabled && log("", param);
-
-        let punchSum = 0.0;
-        let baseSum = 0.0;
-        let baseMod = false;
-
-        for (const mod of knob.mods) {
-            const srcVal = sourceContext.evaluate(mod.sourceObj);
-            const tVal = mod.transformObj.apply(srcVal);
-            const value = tVal * mod.amount;
-
-            switch (mod.mode) {
-                case ModMode.BASE:
-                    baseSum += value * .1;
-                    baseMod = true;
-                    break
-                case ModMode.PUNCH:
-                    punchSum += value;
-                    break;
-            }
-            knob.modEnabled && log("", mod.sourceObj.name);
-
-        }
-
-        /*
-        if (!slideMods) knob.slideValue = 0;
-        if (!bounceMods) knob.bounceValue = 0;
-*/
-
-        if (knob.modEnabled) {
-            log("#####", "");
-            let liveVal = knob.liveValue;
-
-            if (baseMod) {
-                const baseMin = knob.min;
-                const baseMax = knob.max;
-                const baseRange = baseMax - baseMin;
-
-                const small = baseRange * 1e-6;  // baserange ist nach unten durch die UI(min < max) begrenzt
-                const smoothFkt = (x, m) => { return 1 + (knob.smooth) * Math.cos((x - baseMin) * m * pi / (baseMax - baseMin)); };
-
-                switch (knob.mode) {
-
-                    case BaseMode.SLIDE:
-                        const smoothS = (liveVal) => smoothFkt(liveVal, 1);
-                        liveVal = baseMin + fmod((liveVal - baseMin) + baseSum * smoothS(liveVal), baseRange);
-                        break;
-
-                    case BaseMode.BOUNCE:
-                        const smoothB = (liveVal) => smoothFkt(liveVal, 2);
-                        liveVal = liveVal + baseSum * smoothB(liveVal) * knob.bounceDir;
-
-                        if (liveVal > baseMax) {
-                            liveVal = baseMax * (1 - small);
-                            knob.bounceDir = -1;
-                        }
-                        else if (liveVal < baseMin) {
-                            liveVal = baseMin * (1 + small);
-                            knob.bounceDir = 1;
-                        }
-                        break;
-                }
-
-                knob.liveValue = liveVal;
-
-                // Punch zyklisch im BaseRange
-                knob.cmValue = baseMin + fmod((liveVal - baseMin) + punchSum * knob.bounceDir, baseRange);
-            }
-
-            else {
-                // Punch-only: clamp
-                knob.cmValue = clamp(knob.liveValue + punchSum, 0, 1);
-            }
-        }
-    }
-
-    // 6. GPU-Pipeline aktualisieren
+    applyModulations(knobs);
     refreshCMEditor();
-
 }
 
 
