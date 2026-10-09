@@ -8,6 +8,8 @@ import { buildCmapUI } from "./ui/cmap-ui.js";
 import { updateKnobVisual } from "./ui/knob-visual.js";
 import { createXlutUI } from "./ui/xlut-ui.js";
 import { applyModulations } from "./modulation-engine.js";
+import { createCommunitySession } from "./community-session.js";
+import { supabase } from "./supabase-client.js";
 
 const isEditor = Boolean(document.getElementById("cmKnobs"));
 const launchToken = new URLSearchParams(window.location.hash.slice(1)).get("state");
@@ -225,9 +227,17 @@ if (isEditor) {
 //
 ///////////////////////////////////////////////////////////
 
+const communitySession = isEditor
+    ? createCommunitySession({
+        client: supabase,
+        onError: error => console.error("Community-Session:", error),
+    })
+    : null;
+
 const presets = isEditor
     ? (await import("./presets.js")).createPresets({
         fractalRenderer, packCMParams, xlutUI,
+        communitySession,
         onChange: () => {
             broadcastView(fractalRenderer.getView());
             refreshCMEditor();
@@ -239,7 +249,7 @@ if (isEditor) {
     const { createProblemReport } = await import("./problem-report.js");
     createProblemReport({
         getCurrentPresetId: () => presets.getCurrentPresetId(),
-        getSession: () => presets.getSession(),
+        getSession: () => communitySession.getSession(),
     });
 }
 

@@ -1,7 +1,6 @@
 import { knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
 import { cmapParams } from "./colormap/params.js";
 import { buildVisualizationPreset, isVisualizationPreset, readVisualizationPreset } from "./preset-format.js";
-import { supabase } from "./supabase-client.js";
 import { signIn, signOut } from "./community-auth.js";
 import {
     deletePreset, likePreset, listLikedPresetIds, listPresets, loadPresetData, recordPresetView,
@@ -11,7 +10,7 @@ import {
 const CATEGORIES = ["featured", "community", "mine"];
 const LOCAL_KEY = "presets";
 
-export function createPresets({ fractalRenderer, xlutUI, onChange }) {
+export function createPresets({ fractalRenderer, xlutUI, communitySession, onChange }) {
     const popup = document.getElementById("presetPopup");
     const status = document.getElementById("presetStatus");
     const nameInput = document.getElementById("presetNameInput");
@@ -22,9 +21,7 @@ export function createPresets({ fractalRenderer, xlutUI, onChange }) {
     let currentSort = "default";
     let currentSearch = "";
     let currentUser = null;
-    let currentSession = null;
     let currentIsAdmin = false;
-    let profileRevision = 0;
     let currentPresetId = null;
     let editingPreset = null;
     let busy = false;
@@ -50,11 +47,9 @@ export function createPresets({ fractalRenderer, xlutUI, onChange }) {
         }
     }
 
-    function setSession(session) {
-        currentSession = session;
-        currentUser = session?.user ?? null;
-        currentIsAdmin = false;
-        const currentRevision = ++profileRevision;
+    function setCommunityState(state) {
+        currentUser = state.user;
+        currentIsAdmin = state.isAdmin;
         const signedOut = document.getElementById("authSignedOut");
         const signedIn = document.getElementById("authSignedIn");
         signedOut.classList.toggle("hidden", Boolean(currentUser));
@@ -66,18 +61,6 @@ export function createPresets({ fractalRenderer, xlutUI, onChange }) {
             || "Angemeldet";
         document.getElementById("problemBtn").disabled = !currentUser;
         if (popup && !popup.classList.contains("hidden")) void refresh();
-        if (currentUser && supabase) {
-            supabase.from("profiles").select("is_admin").eq("id", currentUser.id).maybeSingle()
-                .then(({ data, error }) => {
-                    if (error) throw error;
-                    if (currentRevision !== profileRevision) return;
-                    currentIsAdmin = Boolean(data?.is_admin);
-                    if (popup && !popup.classList.contains("hidden")) void refresh();
-                })
-                .catch(error => {
-                    if (currentRevision === profileRevision) report(error);
-                });
-        }
     }
 
     function selectCategory(category, refreshList = true) {
@@ -367,12 +350,9 @@ export function createPresets({ fractalRenderer, xlutUI, onChange }) {
     popup.addEventListener("keydown", event => {
         if (event.key === "Escape") { event.stopPropagation(); close(); }
     });
-    if (supabase) {
-        supabase.auth.getSession().then(({ data, error }) => {
-            if (error) report(error);
-            setSession(data?.session ?? null);
-        });
-        supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    if (communitySession) {
+        communitySession.subscribe(setCommunityState);
+        void communitySession.start().catch(report);
     } else {
         document.getElementById("communityConfigNotice").textContent =
             "Community-Login ist noch nicht eingerichtet. Die öffentlichen Presets sind nach der Supabase-Konfiguration verfügbar.";
@@ -383,8 +363,6 @@ export function createPresets({ fractalRenderer, xlutUI, onChange }) {
         openLoad: () => open(),
         isOpen: () => !popup.classList.contains("hidden"),
         getCurrentPresetId: () => currentPresetId,
-        getSession: () => currentSession,
-        setSession,
         async loadDefault() {
             const defaultName = localStorage.getItem("defaultVisualizationPreset");
             if (!defaultName) return false;

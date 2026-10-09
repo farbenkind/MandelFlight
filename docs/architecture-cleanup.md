@@ -17,6 +17,10 @@ Ziels.
   [problem-report-store.js](../src/projekte/fractal-demo/problem-report-store.js)
   verschoben. Die Datenzuordnung und Supabase-Operation bleiben unverändert;
   Preset-Datenzugriff und Problembericht-Datenzugriff sind jetzt getrennt.
+- **2026-10-09:** Auth-Session, Profil-/Adminabfrage und deren Race-Schutz liegen
+  jetzt in [community-session.js](../src/projekte/fractal-demo/community-session.js).
+  Die Preset-UI konsumiert Auth-Snapshots; Problemberichte lesen die Session
+  direkt aus dem Sessiondienst.
 
 ## Kurzfassung
 
@@ -31,11 +35,10 @@ Die wichtigsten Risiken liegen an den Grenzen zwischen Komponenten:
   Features: Initialisierung, Audio-Anschluss, Preset- und
   Fullscreen-Verknüpfungen. Die Modulationsauswertung wurde inzwischen
   ausgelagert.
-- [presets.js](../src/projekte/fractal-demo/presets.js) mischt
-  Bibliotheks-UI, Aktionen, Auth-/Profilstatus und Legacy-Import.
-- Die Auth-Session wird in der Preset-Oberfläche verwaltet, obwohl OAuth-Aufrufe
-  bereits in [community-auth.js](../src/projekte/fractal-demo/community-auth.js)
-  liegen.
+- [presets.js](../src/projekte/fractal-demo/presets.js) mischt weiterhin
+  Bibliotheks-UI, Aktionen und Legacy-Import; Auth-/Profilzustand wurde in
+  [community-session.js](../src/projekte/fractal-demo/community-session.js)
+  ausgelagert.
 - [modulation.js](../src/projekte/fractal-demo/modulation.js) vereint
   Quelltypen, Transformations-Registry, Fabriken und Parameterein-/ausgabe.
   Die Evaluation liegt jetzt in
@@ -56,13 +59,13 @@ dann in kleinen, testsicheren Gruppen Dateien verschieben.
 
 | Bereich | Dateien und Befund |
 |---|---|
-| App-Start | [main.js](../src/projekte/fractal-demo/main.js), ca. 240 Zeilen. Initialisiert WebGPU, Renderer, Colormap, Audio, Knobs, Modulation, Presets, Problemberichte und Fullscreen-Kommunikation. |
+| App-Start | [main.js](../src/projekte/fractal-demo/main.js), ca. 277 Zeilen. Initialisiert WebGPU, Renderer, Colormap, Audio, Knobs, Modulation, Presets, Problemberichte und Fullscreen-Kommunikation. |
 | Fractal Engine | [fractal-renderer.js](../src/projekte/fractal-demo/fractal-renderer.js), ca. 218 Zeilen, enthält GPU-Ressourcen und eingebetteten WGSL-Code. Navigation liegt separat in [fractal-navigation.js](../src/projekte/fractal-demo/fractal-navigation.js). |
 | Colormap | [colormap/](../src/projekte/fractal-demo/colormap) ist bereits fachlich gruppiert: GPU-Code, Parameter und WGSL-Shader. |
 | Modulation | [modulation.js](../src/projekte/fractal-demo/modulation.js), ca. 235 Zeilen; [knob-state.js](../src/projekte/fractal-demo/knob-state.js) enthält Zustand und Modulationsserialisierung. Die Evaluation liegt in [modulation-engine.js](../src/projekte/fractal-demo/modulation-engine.js), die `main.js` aufruft. |
 | Audio | [audio-input.js](../src/projekte/fractal-demo/audio-input.js) verbindet WebAudio, Worklet und WASM; [audio-updates.js](../src/projekte/fractal-demo/audio-updates.js) taktet Updates; [beat-divisions.js](../src/projekte/fractal-demo/beat-divisions.js) enthält Beat-Zeitbasis. |
-| Presets | [presets.js](../src/projekte/fractal-demo/presets.js), ca. 381 Zeilen. Formatlogik ist in [preset-format.js](../src/projekte/fractal-demo/preset-format.js), Supabase-Zugriffe in [community-store.js](../src/projekte/fractal-demo/community-store.js). |
-| Auth | [community-auth.js](../src/projekte/fractal-demo/community-auth.js) kapselt OAuth-Funktionen; [supabase-client.js](../src/projekte/fractal-demo/supabase-client.js) erzeugt den Client. Auth-Session, Profilabfrage und Auth-UI liegen in `presets.js`. |
+| Presets | [presets.js](../src/projekte/fractal-demo/presets.js), ca. 359 Zeilen. Formatlogik ist in [preset-format.js](../src/projekte/fractal-demo/preset-format.js), Supabase-Zugriffe in [community-store.js](../src/projekte/fractal-demo/community-store.js). |
+| Auth | [community-auth.js](../src/projekte/fractal-demo/community-auth.js) kapselt OAuth-Funktionen; [community-session.js](../src/projekte/fractal-demo/community-session.js) verwaltet Session und Adminprofil; [supabase-client.js](../src/projekte/fractal-demo/supabase-client.js) erzeugt den Client. Auth-UI bleibt derzeit in `presets.js`. |
 | Problemberichte | [problem-report.js](../src/projekte/fractal-demo/problem-report.js) enthält Formularverhalten, Turnstile-Laden/-Verifikation und Meldungsmetadaten. [problem-report-store.js](../src/projekte/fractal-demo/problem-report-store.js) enthält den separaten Supabase-Datenzugriff. |
 | Overlay-/UI | [ui/](../src/projekte/fractal-demo/ui) gruppiert einige Komponenten. Das Modulations-Overlay koppelt UI direkt an globale Knobs und DOM-IDs. |
 | CSS/HTML | [fractal.css](../src/projekte/fractal-demo/fractal.css), ca. 815 Zeilen. `index.html` im Repository-Root und [fractal-demo/index.html](../src/projekte/fractal-demo/index.html) enthalten weitgehend doppelte App-Markups. |
@@ -199,7 +202,7 @@ fachliche Regeln bleiben beim jeweiligen Feature.
 | [audio-input.js](../src/projekte/fractal-demo/audio-input.js), [audio-updates.js](../src/projekte/fractal-demo/audio-updates.js), [pcm-processor.js](../src/projekte/fractal-demo/pcm-processor.js), [beat-divisions.js](../src/projekte/fractal-demo/beat-divisions.js) | `src/features/audio/` | Capture, Worklet, Verarbeitung und Zeitbasis bündeln, ohne Audio-Verhalten zu ändern. |
 | [presets.js](../src/projekte/fractal-demo/presets.js), [preset-format.js](../src/projekte/fractal-demo/preset-format.js) | `src/features/presets/` | Formatkern getrennt lassen; Bibliothekscontroller, Karten und lokale Importe schrittweise trennen. |
 | [community-store.js](../src/projekte/fractal-demo/community-store.js) | `src/features/presets/data/` | Enthält jetzt nur Preset-/Like-Abfragen. Problembericht-Zugriff liegt separat in [problem-report-store.js](../src/projekte/fractal-demo/problem-report-store.js). |
-| [community-auth.js](../src/projekte/fractal-demo/community-auth.js) | `src/features/auth/supabase-auth.js` | OAuth-Aufrufe klar von Sessionzustand und UI unterscheiden. |
+| [community-auth.js](../src/projekte/fractal-demo/community-auth.js), [community-session.js](../src/projekte/fractal-demo/community-session.js) | `src/features/auth/` | OAuth und Sessiondienst sind getrennt; Auth-UI und Preset-Controller noch weiter entkoppeln. |
 | [supabase-client.js](../src/projekte/fractal-demo/supabase-client.js) | `src/services/supabase/client.js` | Einen Client beibehalten; keine parallelen Clients pro Feature. |
 | [problem-report.js](../src/projekte/fractal-demo/problem-report.js) | `src/features/problem-reports/` | Formular, Turnstile-Anwendungslogik und Datenzugriff separat verantworten lassen. |
 | [ui/mod-overlay.js](../src/projekte/fractal-demo/ui/mod-overlay.js), [ui/param-controls.js](../src/projekte/fractal-demo/ui/param-controls.js) | `src/ui/overlays/modulation/` und `src/ui/components/` | Generische Controls von overlay-spezifischer Orchestrierung trennen. |
@@ -226,8 +229,8 @@ fachliche Regeln bleiben beim jeweiligen Feature.
 
 1. `main.js` zum dünnen Bootstrap machen. Fractal, Colormap, Audio,
    Modulation, Presets und Fullscreen-Kommunikation werden getrennt initialisiert.
-2. Session- und Profilstatus in `features/auth` verlagern. Presets konsumieren
-   den Auth-Zustand, statt ihn zu verwalten.
+2. Session- und Profilstatus wurden in `community-session.js` verlagert.
+   Presets konsumieren Auth-Snapshots; als Nächstes Auth-UI separat machen.
 3. Preset-UI auf Bibliothekscontroller, Preset-Karten und lokale Legacy-Importe
    aufteilen. `preset-format.js` als Formatkern behalten.
 4. Modulations-Engine weiter entkoppeln: Quellen und Knob-Zustand sauber
@@ -276,7 +279,7 @@ fachliche Regeln bleiben beim jeweiligen Feature.
 
 1. Unbenutzte Kandidaten und Prototypreste nach Referenzsuche prüfen.
 2. Audio- und Fractal-Module gruppieren und Imports korrigieren.
-3. Auth-Session von der Preset-UI trennen.
+3. Auth-UI weiter von der Preset-UI trennen.
 4. Problemberichte aus dem Community-Preset-Store lösen.
 5. Preset-Controller und Modulations-Registries in kleinere Module teilen.
 6. Overlay-Abhängigkeiten explizit machen.
