@@ -126,7 +126,7 @@ Database-enforced safeguards in the migration:
    Sign In / Providers. Add each provider's OAuth client ID/secret there (not in
    this repository). GitHub is the currently displayed community login option.
    Configure the provider callback shown by Supabase, then set the Supabase
-   Site URL to `https://mandelflight.pages.dev` and add the production and local
+   Site URL to `https://mandelflight.farbenkind.org` and add the production and local
    app URLs to the redirect allow-list.
 3. Copy `.env.example` to `.env.local` and fill in the Supabase Project URL and
    public anon/publishable key. The key is intentionally used by the browser;
@@ -240,15 +240,18 @@ Shift works with WaveMix=0. Existing presets retain their values, but Shift
 now rolls the selected section instead of offsetting the final output or
 changing only the cosine wave's internal phase.
 
-Live: https://mandelflight.pages.dev (Cloudflare Pages project `mandelflight`).
+Live: https://mandelflight.farbenkind.org (Cloudflare Pages project `mandelflight`).
+The previous address https://mandelflight.pages.dev remains accessible without
+a redirect during the transition.
 
-Planned custom domain: `https://mandelflight.farbenkind.org`. Add it through the
-existing Pages project's Custom domains section before changing DNS. Keep the
-Pages address available during the transition and retain the `PRESETS` KV
-binding. Add the new root and editor URLs to Supabase's redirect allow-list
-before changing the Site URL. Supabase account presets and KV data stay in
-their existing services; browser-local data and login sessions do not transfer
-between domains. Import local presets on the old origin before redirecting it.
+The custom domain points to the existing Pages project through a CNAME
+`mandelflight` -> `mandelflight.pages.dev`. The `PRESETS` KV binding is retained.
+Supabase's Site URL is the custom domain; the redirect allow-list retains both
+origins and their `/**` paths for the root and nested editor entry points.
+Supabase account presets and KV data stay in their existing services;
+browser-local data and login sessions do not transfer between domains. Import
+local presets on the old origin before redirecting it. Sign in again on the new
+domain to access account-owned presets.
 
 Local development with hot reload: `npm run dev` (Vite prints the local URL).
 Deploy the current build to Pages: `npm run deploy`.
