@@ -2,6 +2,7 @@ import { knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
 import { cmapParams } from "./colormap/params.js";
 import { buildVisualizationPreset, isVisualizationPreset, readVisualizationPreset } from "./preset-format.js";
 import { signIn, signOut } from "./community-auth.js";
+import { createCommunityAuthUI } from "./community-auth-ui.js";
 import {
     deletePreset, likePreset, listLikedPresetIds, listPresets, loadPresetData, recordPresetView,
     saveCommunityPreset, savePreset, setFeatured, setPublished,
@@ -47,19 +48,9 @@ export function createPresets({ fractalRenderer, xlutUI, communitySession, onCha
         }
     }
 
-    function setCommunityState(state) {
+    function onCommunityStateChange(state) {
         currentUser = state.user;
         currentIsAdmin = state.isAdmin;
-        const signedOut = document.getElementById("authSignedOut");
-        const signedIn = document.getElementById("authSignedIn");
-        signedOut.classList.toggle("hidden", Boolean(currentUser));
-        signedIn.classList.toggle("hidden", !currentUser);
-        document.getElementById("authUserName").textContent =
-            currentUser?.user_metadata?.full_name
-            || currentUser?.user_metadata?.name
-            || currentUser?.email
-            || "Angemeldet";
-        document.getElementById("problemBtn").disabled = !currentUser;
         if (popup && !popup.classList.contains("hidden")) void refresh();
     }
 
@@ -345,18 +336,17 @@ export function createPresets({ fractalRenderer, xlutUI, communitySession, onCha
     document.getElementById("presetCloseBtn").addEventListener("click", close);
     document.getElementById("presetSaveAsBtn").addEventListener("click", showSave);
     document.getElementById("presetSaveBtn").addEventListener("click", () => run(saveCurrent));
-    document.getElementById("authGithubBtn").addEventListener("click", () => run(() => signIn("github")));
-    document.getElementById("authSignOutBtn").addEventListener("click", () => run(signOut));
     popup.addEventListener("keydown", event => {
         if (event.key === "Escape") { event.stopPropagation(); close(); }
     });
-    if (communitySession) {
-        communitySession.subscribe(setCommunityState);
-        void communitySession.start().catch(report);
-    } else {
-        document.getElementById("communityConfigNotice").textContent =
-            "Community-Login ist noch nicht eingerichtet. Die öffentlichen Presets sind nach der Supabase-Konfiguration verfügbar.";
-    }
+    createCommunityAuthUI({
+        communitySession,
+        execute: run,
+        onSignIn: () => signIn("github"),
+        onSignOut: signOut,
+        onStateChange: onCommunityStateChange,
+        onError: report,
+    });
 
     return {
         openSave: () => open(true),
