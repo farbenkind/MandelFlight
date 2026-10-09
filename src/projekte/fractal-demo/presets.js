@@ -238,8 +238,8 @@ export function createPresets({
             }));
         }
         if (currentIsAdmin && entry.is_public) {
-            actions.append(button(entry.featured ? "Featured entfernen" : "Als Featured kuratieren", async () => {
-                await setFeatured(entry.id, !entry.featured, Date.now());
+            actions.append(button(entry.featured ? "Featured entfernen" : "Als Featured markieren", async () => {
+                await setFeatured(entry.id, !entry.featured, Math.floor(Date.now() / 1000));
                 status.textContent = entry.featured ? "Featured-Auszeichnung entfernt." : "Preset als Featured markiert.";
                 await refresh();
             }));
