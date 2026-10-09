@@ -1,4 +1,5 @@
 import { createFractalRenderer } from "./fractal-renderer.js";
+import { initializeGraphics } from "./gpu-startup.js";
 import { startAudioInput } from "./audio-input.js";
 import { createColormapGpu } from "./colormap/colormap-gpu.js";
 import { debug, makeDraggable } from "./util.js";
@@ -35,18 +36,7 @@ if (launchStateKey) {
 
 /////////////////  Webgui Settup
 const canvas = document.getElementById("fractalCanvas");
-const adapter = await navigator.gpu.requestAdapter();
-const device = await adapter.requestDevice();
-
-const context = canvas.getContext("webgpu");
-const format = navigator.gpu.getPreferredCanvasFormat();
-
-
-context.configure({
-    device,
-    format,
-    alphaMode: "opaque"
-});
+const { device, context, format } = await initializeGraphics(canvas);
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////

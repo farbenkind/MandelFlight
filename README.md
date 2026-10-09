@@ -6,6 +6,15 @@ prototype is the fractal demo from the `farbenkind/my-website` repository.
 
 ## Run locally
 
+MandelFlight currently targets PCs/laptops with WebGPU-capable graphics and a
+current browser (Chrome or Edge with hardware acceleration recommended).
+Phones and tablets are not officially supported; compatible devices may run
+the app, but performance, battery use and touch UX are not guaranteed. A
+coarse-pointer device sees a desktop recommendation. Failed startup (including
+missing WebGPU, no adapter or device creation failure) displays an explicit
+error and PC/laptop recommendation instead of leaving inert editor controls.
+No WebGL fallback is implemented.
+
 Install [Node.js](https://nodejs.org/) and npm, then run:
 
 ```powershell

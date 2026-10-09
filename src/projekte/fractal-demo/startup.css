@@ -1,0 +1,46 @@
+.mobile-support-hint {
+    display: none;
+    position: fixed;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    z-index: 10001;
+    padding: 12px;
+    border-radius: 8px;
+    background: #18242f;
+    color: #fff;
+    font: 14px/1.5 system-ui, sans-serif;
+    pointer-events: none;
+}
+
+@media (pointer: coarse) {
+    .mobile-support-hint { display: block; }
+}
+
+.startup-failed > :not(.startup-error):not(#deployStatusBtn) {
+    display: none !important;
+}
+
+.startup-failed {
+    overflow: auto;
+    background: #111b24;
+}
+
+.startup-error {
+    position: relative;
+    z-index: 10002;
+    box-sizing: border-box;
+    max-width: 640px;
+    margin: 72px auto 24px;
+    padding: 24px;
+    color: #fff;
+    font: 16px/1.6 system-ui, sans-serif;
+}
+
+.startup-error h1 { font-size: 26px; }
+.startup-error a { color: #8ed4ff; overflow-wrap: anywhere; }
+.startup-error button {
+    padding: 12px 18px;
+    font: inherit;
+    cursor: pointer;
+}
