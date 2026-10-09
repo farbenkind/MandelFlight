@@ -79,6 +79,16 @@ Der aktuelle Runtime-Code ist damit noch nicht als offline-faehig zertifiziert.
 
 ## Fortschritt
 
+- **2026-10-09:** Meine Presets enthalten ausschliesslich den aktiven
+  Kontobestand. Der eigene Bereich Auf diesem Geraet bietet lokales Speichern
+  ohne Login sowie Laden, Aktualisieren, Loeschen und explizites privates
+  Kopieren ins Konto. Speicherziele sind separate Aktionen, keine impliziten
+  Login-Fallbacks. Die alten gemeinsamen Cloud-Karten und deren Frontend-
+  Datenzugriff sind entfernt; importierte Kopien und KV-Originale bleiben.
+  [local-preset-store.js](../src/projekte/fractal-demo/local-preset-store.js)
+  kapselt den bestehenden lokalen Speicher inklusive Legacy-Lesbarkeit,
+  Kollisionspruefung und expliziten Speicherfehlern.
+
 - **2026-10-09:** Ein GitHub-Login mit explizitem Arbeitsmodus ersetzt den
   bisherigen Kontohinweis. Benutzer/A ist Standard, Admin/A nutzt denselben
   Bestand mit Verwaltungsrechten, Testbenutzer/B ist ein privater Bestand pro

@@ -76,7 +76,8 @@
             <nav class="community-tabs" aria-label="Preset-Kategorien" role="tablist">
                 <button type="button" role="tab" aria-selected="true" data-preset-category="featured">⭐ Featured</button>
                 <button type="button" role="tab" aria-selected="false" data-preset-category="community">🌍 Community</button>
-                <button type="button" role="tab" aria-selected="false" data-preset-category="mine">👤 My Presets</button>
+                <button type="button" role="tab" aria-selected="false" data-preset-category="mine">👤 Meine Presets</button>
+                <button type="button" role="tab" aria-selected="false" data-preset-category="local">Auf diesem Geraet</button>
             </nav>
             <div class="community-browser-tools">
                 <label>Suchen <input id="presetSearch" type="search" placeholder="Name, Beschreibung oder Autor"></label>
@@ -92,7 +93,8 @@
             </div>
             <section id="communityPresetList" class="community-preset-list" aria-live="polite"></section>
             <div class="preset-actions">
-                <button id="presetSaveAsBtn" type="button">Aktuelle Ansicht als Preset speichern</button>
+                <button id="presetSaveLocalBtn" type="button">Auf diesem Geraet speichern</button>
+                <button id="presetSaveAsBtn" type="button" disabled>In meinem Konto speichern</button>
             </div>
             <div id="presetSaveUI" class="hidden">
                 <p id="presetSaveTarget"></p>

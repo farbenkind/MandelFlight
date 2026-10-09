@@ -18,5 +18,8 @@ test("Google sign-in is absent from every app entry page while GitHub remains", 
         assert.match(html, /id="authWorkspaceMode" disabled/);
         for (const mode of ["user", "admin", "test"]) assert.match(html, new RegExp(`value="${mode}"`));
         assert.match(html, /id="presetSaveTarget"/);
+        assert.match(html, /data-preset-category="local"/);
+        assert.match(html, /id="presetSaveLocalBtn"/);
+        assert.match(html, /id="presetSaveAsBtn" type="button" disabled/);
     }
 });

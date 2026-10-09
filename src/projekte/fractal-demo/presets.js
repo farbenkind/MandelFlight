@@ -2,15 +2,15 @@ import { knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
 import { cmapParams } from "./colormap/params.js";
 import { buildVisualizationPreset, isVisualizationPreset, readVisualizationPreset } from "./preset-format.js";
 import { createCommunityAuthUI } from "./community-auth-ui.js";
-import { createCommunityPresetCard, createLocalPresetCard, createCloudPresetCard } from "./ui/preset-card.js";
-import { listLegacyCloudPresets, loadLegacyCloudPreset } from "./legacy-preset-store.js";
+import { createCommunityPresetCard, createLocalPresetCard } from "./ui/preset-card.js";
+import { createLocalPresetStore } from "./local-preset-store.js";
 import { createPresetWorkspaceState } from "./preset-workspace-state.js";
 import {
     deletePreset, likePreset, listLikedPresetIds, listPresets, loadPresetData, recordPresetView,
     saveCommunityPreset, savePreset, setFeatured, setPublished,
 } from "./community-store.js";
 
-const CATEGORIES = ["featured", "community", "mine"];
+const CATEGORIES = ["featured", "community", "mine", "local"];
 const LOCAL_KEY = "presets";
 
 export function createPresets({
@@ -35,15 +35,21 @@ export function createPresets({
     let likedIds = new Set();
     let currentDataset = "A";
     const workspaceState = createPresetWorkspaceState();
+    const localStore = createLocalPresetStore();
+    let saveDestination = "account";
 
     function updateSaveTarget() {
+        const local = saveDestination === "local";
         const account = currentUser?.user_metadata?.user_name || currentUser?.email || "dein Konto";
-        document.getElementById("presetSaveTarget").textContent =
-            `Speicherziel: ${account} · Datensatz ${currentDataset}. ${currentDataset === "B"
+        document.getElementById("presetSaveTarget").textContent = local
+            ? "Speicherziel: Dieser Browser auf dieser Domain. Kein Cloud-Backup; unabhaengig vom Konto."
+            : `Speicherziel: ${account} · Datensatz ${currentDataset}. ${currentDataset === "B"
                 ? "Testbestand bleibt privat."
                 : "Privat, solange du nicht explizit veroeffentlichst."}`;
-        document.getElementById("presetSaveBtn").disabled = !currentUser || !workspaceState.ready;
-        publishInput.disabled = currentDataset === "B";
+        document.getElementById("presetSaveBtn").disabled = busy || (!local && (!currentUser || !workspaceState.ready));
+        document.getElementById("presetSaveAsBtn").disabled = busy || !currentUser || !workspaceState.ready;
+        publishInput.disabled = local || currentDataset === "B";
+        publishInput.closest("label").classList.toggle("hidden", local);
         document.getElementById("presetSaveBtn").textContent = editingPreset
             ? "Dieses Preset aktualisieren" : "Neues Preset speichern";
     }
@@ -57,7 +63,7 @@ export function createPresets({
         if (busy) return;
         busy = true;
         popup.setAttribute("aria-busy", "true");
-        for (const id of ["authWorkspaceMode", "authGithubBtn", "authSignOutBtn", "presetSaveBtn"]) {
+        for (const id of ["authWorkspaceMode", "authGithubBtn", "authSignOutBtn", "presetSaveBtn", "presetSaveLocalBtn", "presetSaveAsBtn"]) {
             document.getElementById(id).disabled = true;
         }
         try {
@@ -71,6 +77,7 @@ export function createPresets({
             document.getElementById("authWorkspaceMode").disabled = !workspaceState.ready;
             document.getElementById("authGithubBtn").disabled = !communitySession;
             document.getElementById("authSignOutBtn").disabled = !communitySession;
+            document.getElementById("presetSaveLocalBtn").disabled = false;
             updateSaveTarget();
         }
     }
@@ -92,7 +99,8 @@ export function createPresets({
         currentIsAdmin = state.isAdmin;
         currentDataset = state.dataset ?? "A";
         updateSaveTarget();
-        if (popup && !popup.classList.contains("hidden") && (!currentUser || workspaceState.ready)) void refresh();
+        if (popup && !popup.classList.contains("hidden")
+            && (currentCategory === "local" || !currentUser || workspaceState.ready)) void refresh();
     }
 
     function selectCategory(category, refreshList = true) {
@@ -101,6 +109,14 @@ export function createPresets({
             tab.setAttribute("aria-selected", String(tab.dataset.presetCategory === category));
         }
         document.getElementById("presetSaveUI").classList.add("hidden");
+        const sortInput = document.getElementById("presetSort");
+        for (const option of sortInput.options) {
+            option.disabled = category === "local" && ["likes", "views", "saves"].includes(option.value);
+        }
+        if (category === "local" && ["likes", "views", "saves"].includes(currentSort)) {
+            currentSort = "default";
+            sortInput.value = currentSort;
+        }
         if (refreshList) void refresh();
     }
 
@@ -108,8 +124,7 @@ export function createPresets({
         popup.classList.remove("hidden");
         document.getElementById("presetBtn").setAttribute("aria-expanded", "true");
         if (save) {
-            selectCategory("mine", false);
-            showSave();
+            showSave("local");
         }
         status.textContent = "";
         void refresh();
@@ -154,72 +169,56 @@ export function createPresets({
         return element;
     }
 
-    function renderLocalImports(existingNames = new Set()) {
-        let legacy = [];
-        try {
-            legacy = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
-            if (!Array.isArray(legacy)) legacy = [];
-        } catch (error) {
-            console.error("Lokale Presets koennen nicht gelesen werden:", error);
-            return;
+    function renderLocalPresets() {
+        const search = currentSearch.toLocaleLowerCase();
+        const entries = localStore.list().filter(preset =>
+            `${preset.name} ${preset.description ?? ""}`.toLocaleLowerCase().includes(search));
+        entries.sort(currentSort === "name"
+            ? (a, b) => a.name.localeCompare(b.name)
+            : (a, b) => (b.updated ?? b.created ?? 0) - (a.updated ?? a.created ?? 0));
+        list.replaceChildren();
+        if (!entries.length) {
+            const empty = document.createElement("p");
+            empty.textContent = "Hier sind noch keine lokalen Presets. Speichere ein Visual auf diesem Geraet.";
+            list.append(empty);
         }
-        for (const preset of legacy.filter(isVisualizationPreset)) {
-            if (!preset?.name || existingNames.has(preset.name)) continue;
-            const importButton = button("Anmelden zum Import", async assertCurrent => {
-                if (!currentUser) throw new Error("Zum Import bitte anmelden.");
+        for (const preset of entries) {
+            const actions = document.createElement("div");
+            actions.className = "community-preset-actions";
+            actions.append(button("Laden", () => applyPreset(preset)));
+            actions.append(button("Aktuelle Ansicht hier aktualisieren", () => {
+                saveDestination = "local";
+                editingPreset = preset;
+                nameInput.value = preset.name;
+                descriptionInput.value = preset.description ?? "";
+                publishInput.checked = false;
+                updateSaveTarget();
+                document.getElementById("presetSaveUI").classList.remove("hidden");
+                nameInput.focus();
+            }));
+            actions.append(button("Auf diesem Geraet loeschen", async () => {
+                if (!window.confirm(`"${preset.name}" nur auf diesem Geraet loeschen?`)) return;
+                localStore.delete(preset.name);
+                if (editingPreset?.name === preset.name && saveDestination === "local") {
+                    editingPreset = null;
+                    document.getElementById("presetSaveUI").classList.add("hidden");
+                }
+                status.textContent = "Lokales Preset geloescht. Kontopresets bleiben unveraendert.";
+                await refresh();
+            }));
+            if (currentUser && workspaceState.ready) actions.append(button("Private Kopie in mein Konto speichern", async assertCurrent => {
                 const data = readVisualizationPreset(preset);
                 await savePreset({
                     name: preset.name,
-                    description: "Aus lokalem Speicher importiert",
+                    description: preset.description || "Aus lokalem Speicher importiert",
                     presetData: buildVisualizationPreset(preset.name, data.view, data.knobs, data.xlut),
                     publish: false,
                 }, currentUser.id);
                 assertCurrent();
-                status.textContent = `"${preset.name}" in My Presets importiert.`;
+                status.textContent = `"${preset.name}" privat in Datensatz ${currentDataset} kopiert. Lokales Original bleibt erhalten.`;
                 await refresh();
-            });
-            if (currentUser) importButton.textContent = "In My Presets importieren";
-            list.append(createLocalPresetCard(preset, importButton));
-        }
-    }
-
-    async function renderCloudImports(request) {
-        try {
-            const entries = await listLegacyCloudPresets();
-            if (request !== revision) return;
-            for (const entry of entries) {
-                const actions = document.createElement("div");
-                actions.className = "community-preset-actions";
-                    actions.append(button("Laden", async assertCurrent => {
-                        const preset = await loadLegacyCloudPreset(entry.name);
-                        assertCurrent();
-                        applyPreset(preset, { name: entry.name });
-                }));
-                actions.append(button(currentUser ? "In My Presets importieren" : "Anmelden zum Import", async assertCurrent => {
-                    if (!currentUser) throw new Error("Zum Import bitte anmelden.");
-                    const userId = currentUser.id;
-                    const data = readVisualizationPreset(await loadLegacyCloudPreset(entry.name));
-                    assertCurrent();
-                    if (currentUser?.id !== userId) throw new Error("Konto hat sich geaendert. Bitte erneut importieren.");
-                    await savePreset({
-                        name: entry.name,
-                        description: "Aus altem gemeinsamen Cloud-Speicher importiert",
-                        presetData: buildVisualizationPreset(entry.name, data.view, data.knobs, data.xlut),
-                        publish: false,
-                    }, userId);
-                    assertCurrent();
-                    status.textContent = `"${entry.name}" in My Presets importiert.`;
-                    await refresh();
-                }));
-                list.append(createCloudPresetCard(entry, actions));
-            }
-        } catch (error) {
-            if (request !== revision) return;
-            console.error("Alte Cloud-Presets konnten nicht geladen werden:", error);
-            const failure = document.createElement("p");
-            failure.className = "community-error";
-            failure.textContent = error.message;
-            list.append(failure);
+            }));
+            list.append(createLocalPresetCard(preset, actions));
         }
     }
 
@@ -241,6 +240,7 @@ export function createPresets({
                 }));
             }
             actions.append(button("Aktuelle Ansicht überschreiben", () => {
+                saveDestination = "account";
                 editingPreset = entry;
                 updateSaveTarget();
                 nameInput.value = entry.name;
@@ -264,10 +264,10 @@ export function createPresets({
                 assertCurrent();
                 await refresh();
             }));
-            actions.append(button("In My Presets speichern", async assertCurrent => {
+            actions.append(button("In Meine Presets speichern", async assertCurrent => {
                 await saveCommunityPreset(entry.id);
                 assertCurrent();
-                status.textContent = "Kopie in My Presets gespeichert.";
+                status.textContent = "Private Kopie in Meine Presets gespeichert.";
                 await refresh();
             }));
         }
@@ -291,6 +291,10 @@ export function createPresets({
         loading.textContent = "Presets werden geladen ...";
         list.append(loading);
         try {
+            if (currentCategory === "local") {
+                renderLocalPresets();
+                return;
+            }
             if (userId && !workspaceState.ready) throw new Error("Kontoberechtigungen werden noch geprueft.");
             const entries = await listPresets(currentCategory, currentSort, userId);
             if (request !== revision) return;
@@ -307,16 +311,11 @@ export function createPresets({
                 const empty = document.createElement("p");
                 empty.className = "community-empty";
                 empty.textContent = currentCategory === "mine" && !currentUser
-                    ? "Melde dich an, um My Presets zu verwenden."
+                    ? "Melde dich fuer Meine Presets an. Ohne Login kannst du auf diesem Geraet speichern."
                     : "Hier sind noch keine Presets.";
                 list.append(empty);
             } else {
                 for (const entry of filtered) list.append(renderEntry(entry));
-            }
-            if (currentCategory === "mine") {
-                const existingNames = new Set(entries.map(entry => entry.name));
-                renderLocalImports(existingNames);
-                void renderCloudImports(request);
             }
         } catch (error) {
             if (request !== revision) return;
@@ -325,15 +324,13 @@ export function createPresets({
             failure.className = "community-error";
             failure.textContent = error.message;
             list.append(failure);
-            if (currentCategory === "mine") {
-                renderLocalImports();
-                void renderCloudImports(request);
-            }
+            console.error("Preset-Bibliothek:", error);
         }
     }
 
-    function showSave() {
-        selectCategory("mine");
+    function showSave(destination) {
+        saveDestination = destination;
+        selectCategory(destination === "local" ? "local" : "mine");
         editingPreset = null;
         updateSaveTarget();
         nameInput.value = "";
@@ -344,11 +341,12 @@ export function createPresets({
     }
 
     async function saveCurrent() {
-        if (!currentUser) throw new Error("Zum Speichern bitte zuerst anmelden.");
-        if (!workspaceState.ready) throw new Error("Kontoberechtigungen werden noch geprueft.");
+        const local = saveDestination === "local";
+        if (!local && !currentUser) throw new Error("Zum Speichern im Konto bitte zuerst anmelden.");
+        if (!local && !workspaceState.ready) throw new Error("Kontoberechtigungen werden noch geprueft.");
         const ticket = workspaceState.ticket();
-        const userId = currentUser.id;
-        if (editingPreset && (editingPreset.owner_id !== userId || editingPreset.dataset !== currentDataset)) {
+        const userId = currentUser?.id;
+        if (!local && editingPreset && (editingPreset.owner_id !== userId || editingPreset.dataset !== currentDataset)) {
             throw new Error("Bearbeitungsziel gehoert nicht zum aktiven Arbeitsbereich.");
         }
         const name = nameInput.value.trim();
@@ -356,6 +354,18 @@ export function createPresets({
             throw new Error("Name: 1-64 Zeichen, Buchstaben/Zahlen, Leerzeichen oder _ . - + ( ).");
         }
         const presetData = buildVisualizationPreset(name, fractalRenderer.getView(), serializeKnobs(knobs), xlutUI.getChains());
+        if (local) {
+            localStore.save({
+                name, description: descriptionInput.value.trim(), presetData,
+                originalName: editingPreset?.name ?? null,
+            });
+            editingPreset = null;
+            currentPresetId = null;
+            document.getElementById("presetSaveUI").classList.add("hidden");
+            status.textContent = `"${name}" auf diesem Geraet gespeichert. Kein Cloud-Backup.`;
+            await refresh();
+            return;
+        }
         const saved = await savePreset({
             id: editingPreset?.id,
             name,
@@ -369,7 +379,7 @@ export function createPresets({
         currentPresetId = saved.id;
         status.textContent = publishInput.checked
             ? `"${name}" gespeichert und veröffentlicht.`
-            : `"${name}" in My Presets gespeichert.`;
+            : `"${name}" in deinem Konto · Datensatz ${currentDataset} gespeichert.`;
         await refresh();
     }
 
@@ -388,7 +398,8 @@ export function createPresets({
     });
     document.getElementById("presetBtn").addEventListener("click", () => open());
     document.getElementById("presetCloseBtn").addEventListener("click", close);
-    document.getElementById("presetSaveAsBtn").addEventListener("click", showSave);
+    document.getElementById("presetSaveAsBtn").addEventListener("click", () => showSave("account"));
+    document.getElementById("presetSaveLocalBtn").addEventListener("click", () => showSave("local"));
     document.getElementById("presetSaveBtn").addEventListener("click", () => run(saveCurrent));
     document.getElementById("setLandingPresetBtn").addEventListener("click", () => run(async () => {
         const ticket = workspaceState.ticket();
@@ -406,6 +417,7 @@ export function createPresets({
     popup.addEventListener("keydown", event => {
         if (event.key === "Escape") { event.stopPropagation(); close(); }
     });
+    updateSaveTarget();
     createCommunityAuthUI({
         communitySession,
         execute: run,

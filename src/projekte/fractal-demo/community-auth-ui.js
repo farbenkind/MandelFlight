@@ -31,7 +31,7 @@ export function createCommunityAuthUI({
         modeInput.value = state.mode ?? "user";
         modeInput.disabled = changingMode || !state.workspaceReady;
         workspaceStatus.textContent = !user
-            ? "Nicht angemeldet. Speichern im Konto erfordert einen GitHub-Login."
+            ? "Nicht angemeldet. Lokal speichern ist moeglich; fuer Kontopresets bitte mit GitHub anmelden."
             : !state.workspaceReady
                 ? "Kontoberechtigungen werden geprueft. Speichern ist bis dahin gesperrt."
                 : state.mode === "test"

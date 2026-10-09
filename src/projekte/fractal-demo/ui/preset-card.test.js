@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createCommunityPresetCard, createLocalPresetCard, createCloudPresetCard } from "./preset-card.js";
+import { createCommunityPresetCard, createLocalPresetCard } from "./preset-card.js";
 
 const document = {
     createElement(tagName) {
@@ -69,23 +69,13 @@ test("unfeatured cards retain missing-metadata and nonfinite-preview fallbacks",
     assert.equal(actionContainer, actions);
 });
 
-test("local cards retain legacy styling, import action and local-name identity", () => {
+test("local cards show device origin and retain supplied actions and local-name identity", () => {
     const importButton = document.createElement("button");
     const card = createLocalPresetCard({ name: "Legacy" }, importButton, document);
     assert.equal(card.className, "community-preset-card legacy-preset");
     assert.equal(card.dataset.localName, "Legacy");
     assert.equal(card.children[0].textContent, "Legacy");
     assert.equal(card.children[1].textContent,
-        "Lokales Legacy-Preset – nach Anmeldung in My Presets importierbar.");
+        "Auf diesem Geraet · Nur in diesem Browser auf dieser Domain. Kein Cloud-Backup.");
     assert.equal(card.children[2], importButton);
-});
-
-test("old shared cloud cards distinguish their source and retain supplied actions", () => {
-    const actions = document.createElement("div");
-    const card = createCloudPresetCard({ name: "white flash" }, actions, document);
-    assert.equal(card.dataset.cloudName, "white flash");
-    assert.equal(card.dataset.localName, undefined);
-    assert.equal(card.children[1].textContent,
-        "Altes gemeinsames Cloud-Preset – Original bleibt beim Import unverändert.");
-    assert.equal(card.children[2], actions);
 });

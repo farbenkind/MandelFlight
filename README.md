@@ -79,8 +79,9 @@ detected musical downbeat. Sampling/select changes do not start a new clock.
 
 ## Community presets (Supabase)
 
-The Presets browser uses three categories: **Featured**, **Community**, and
-**My Presets**. Public presets can be browsed and loaded without an account.
+The Presets browser separates **Featured**, **Community**, **Meine Presets**
+(account-owned presets in the active A/B workspace) and **Auf diesem Geraet**
+(browser-local presets, independent of login). Public presets can be browsed and loaded without an account.
 Google/GitHub OAuth users can save private presets, publish/unpublish their
 own work, like community presets, and save one private copy of another user's
 preset. A Featured badge is metadata on the original community record; the
@@ -105,12 +106,19 @@ workspace UI. RLS and privileged RPCs check the request workspace and admin
 eligibility; changing the UI alone cannot access B or grant admin privileges.
 Changing identity or workspace clears editing targets and account-bound UI
 state, but retains the current visualization. New sessions start in User / A.
-**My Presets** also displays the old shared Cloudflare KV presets, labelled
-separately from account-owned presets. They can be loaded without signing in
-or explicitly imported as private copies after signing in. Imports never
-modify or delete the KV originals; legacy cloud access remains read-only.
-An unavailable legacy endpoint is shown as an error without hiding account
-or browser-local presets.
+**Auf diesem Geraet speichern** is available without login and while signed in.
+**In meinem Konto speichern** requires a ready authenticated workspace.
+The form displays the explicit destination; it never silently substitutes one
+for the other. Local presets support loading, explicit updating/renaming,
+deleting, search and name/newest sorting, and an explicit private copy to the
+active account. Existing local v1/v2 visuals remain readable. Duplicate local
+names require choosing another name or explicitly updating the existing card;
+storage failures are displayed without claiming success.
+Local storage is specific to the browser profile and origin, not a cloud backup.
+The S shortcut opens the device-save form, regardless of login state.
+The old shared Cloudflare KV cards and automatic list requests have been removed
+from the UI. Already imported account copies and KV originals are retained;
+the legacy API remains read-only for recovery.
 
 Database-enforced safeguards in the migration:
 
