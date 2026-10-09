@@ -24,15 +24,16 @@ test("supported graphics retain the existing opaque WebGPU configuration", async
         getPreferredCanvasFormat: () => "bgra8unorm",
     });
 
-    test("all fractal entry points use guarded startup and a mobile viewport", async () => {
-        const urls = ["../../../index.html", "./index.html", "./fullscreen.html"];
-        for (const path of urls) {
-            const html = await readFile(new URL(path, import.meta.url), "utf8");
-            assert.match(html, /name="viewport" content="width=device-width, initial-scale=1"/);
-            assert.match(html, /src="\/src\/projekte\/fractal-demo\/startup.js"/);
-            assert.doesNotMatch(html, /src="\/src\/projekte\/fractal-demo\/main.js"/);
-        }
-    });
     assert.deepEqual(config, { device, format: "bgra8unorm", alphaMode: "opaque" });
     assert.deepEqual(result, { device, context, format: "bgra8unorm" });
+});
+
+test("all fractal entry points use guarded startup and a mobile viewport", async () => {
+    const urls = ["../../../index.html", "./index.html", "./fullscreen.html"];
+    for (const path of urls) {
+        const html = await readFile(new URL(path, import.meta.url), "utf8");
+        assert.match(html, /name="viewport" content="width=device-width, initial-scale=1"/);
+        assert.match(html, /src="\/src\/projekte\/fractal-demo\/startup.js"/);
+        assert.doesNotMatch(html, /src="\/src\/projekte\/fractal-demo\/main.js"/);
+    }
 });
