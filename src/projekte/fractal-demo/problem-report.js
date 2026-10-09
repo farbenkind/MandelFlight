@@ -1,5 +1,5 @@
 import { supabase } from "./supabase-client.js";
-import { submitProblem } from "./community-store.js";
+import { submitProblem } from "./problem-report-store.js";
 
 const popup = document.getElementById("problemPopup");
 const form = document.getElementById("problemForm");

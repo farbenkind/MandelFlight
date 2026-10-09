@@ -13,6 +13,10 @@ Ziels.
   extrahiert. `main.js` ruft die Engine weiterhin an derselben Stelle im
   Audio-Update auf; die Engine mutiert dieselben Knob-Zustände und hat eigene
   Regressionstests. Preset-, Renderer- und UI-Verträge blieben unverändert.
+- **2026-10-09:** `submitProblem` wurde aus dem Community-Preset-Store in
+  [problem-report-store.js](../src/projekte/fractal-demo/problem-report-store.js)
+  verschoben. Die Datenzuordnung und Supabase-Operation bleiben unverändert;
+  Preset-Datenzugriff und Problembericht-Datenzugriff sind jetzt getrennt.
 
 ## Kurzfassung
 
@@ -59,7 +63,7 @@ dann in kleinen, testsicheren Gruppen Dateien verschieben.
 | Audio | [audio-input.js](../src/projekte/fractal-demo/audio-input.js) verbindet WebAudio, Worklet und WASM; [audio-updates.js](../src/projekte/fractal-demo/audio-updates.js) taktet Updates; [beat-divisions.js](../src/projekte/fractal-demo/beat-divisions.js) enthält Beat-Zeitbasis. |
 | Presets | [presets.js](../src/projekte/fractal-demo/presets.js), ca. 381 Zeilen. Formatlogik ist in [preset-format.js](../src/projekte/fractal-demo/preset-format.js), Supabase-Zugriffe in [community-store.js](../src/projekte/fractal-demo/community-store.js). |
 | Auth | [community-auth.js](../src/projekte/fractal-demo/community-auth.js) kapselt OAuth-Funktionen; [supabase-client.js](../src/projekte/fractal-demo/supabase-client.js) erzeugt den Client. Auth-Session, Profilabfrage und Auth-UI liegen in `presets.js`. |
-| Problemberichte | [problem-report.js](../src/projekte/fractal-demo/problem-report.js) enthält Formularverhalten, Turnstile-Laden/-Verifikation und Meldungsmetadaten. `submitProblem` ist derzeit Teil des Preset-orientierten `community-store.js`. |
+| Problemberichte | [problem-report.js](../src/projekte/fractal-demo/problem-report.js) enthält Formularverhalten, Turnstile-Laden/-Verifikation und Meldungsmetadaten. [problem-report-store.js](../src/projekte/fractal-demo/problem-report-store.js) enthält den separaten Supabase-Datenzugriff. |
 | Overlay-/UI | [ui/](../src/projekte/fractal-demo/ui) gruppiert einige Komponenten. Das Modulations-Overlay koppelt UI direkt an globale Knobs und DOM-IDs. |
 | CSS/HTML | [fractal.css](../src/projekte/fractal-demo/fractal.css), ca. 815 Zeilen. `index.html` im Repository-Root und [fractal-demo/index.html](../src/projekte/fractal-demo/index.html) enthalten weitgehend doppelte App-Markups. |
 | WASM | [modcore/src/lib.rs](../src/projekte/fractal-demo/modcore/src/lib.rs) ist Rust-Quelle. [modcore.js](../src/projekte/fractal-demo/modcore.js) und `modcore/pkg/modcore.js` haben aktuell identischen Inhalt; [build.ps1](../src/projekte/fractal-demo/build.ps1) kopiert die generierten Artefakte. Die Runtime-WASM-Datei ist ebenfalls im Projektverzeichnis. |
@@ -194,7 +198,7 @@ fachliche Regeln bleiben beim jeweiligen Feature.
 | [modulation.js](../src/projekte/fractal-demo/modulation.js), [knob-state.js](../src/projekte/fractal-demo/knob-state.js), [modulation-engine.js](../src/projekte/fractal-demo/modulation-engine.js) | `src/features/modulation/` | Evaluation ist extrahiert; Registry, Modell und Serialisierung beim späteren Umzug weiter entflechten. |
 | [audio-input.js](../src/projekte/fractal-demo/audio-input.js), [audio-updates.js](../src/projekte/fractal-demo/audio-updates.js), [pcm-processor.js](../src/projekte/fractal-demo/pcm-processor.js), [beat-divisions.js](../src/projekte/fractal-demo/beat-divisions.js) | `src/features/audio/` | Capture, Worklet, Verarbeitung und Zeitbasis bündeln, ohne Audio-Verhalten zu ändern. |
 | [presets.js](../src/projekte/fractal-demo/presets.js), [preset-format.js](../src/projekte/fractal-demo/preset-format.js) | `src/features/presets/` | Formatkern getrennt lassen; Bibliothekscontroller, Karten und lokale Importe schrittweise trennen. |
-| [community-store.js](../src/projekte/fractal-demo/community-store.js) | `src/features/presets/data/` plus Problem-Report-Repository | Preset- und Problembericht-Abfragen in ihren jeweiligen Featuregrenzen halten. |
+| [community-store.js](../src/projekte/fractal-demo/community-store.js) | `src/features/presets/data/` | Enthält jetzt nur Preset-/Like-Abfragen. Problembericht-Zugriff liegt separat in [problem-report-store.js](../src/projekte/fractal-demo/problem-report-store.js). |
 | [community-auth.js](../src/projekte/fractal-demo/community-auth.js) | `src/features/auth/supabase-auth.js` | OAuth-Aufrufe klar von Sessionzustand und UI unterscheiden. |
 | [supabase-client.js](../src/projekte/fractal-demo/supabase-client.js) | `src/services/supabase/client.js` | Einen Client beibehalten; keine parallelen Clients pro Feature. |
 | [problem-report.js](../src/projekte/fractal-demo/problem-report.js) | `src/features/problem-reports/` | Formular, Turnstile-Anwendungslogik und Datenzugriff separat verantworten lassen. |
@@ -228,8 +232,8 @@ fachliche Regeln bleiben beim jeweiligen Feature.
    aufteilen. `preset-format.js` als Formatkern behalten.
 4. Modulations-Engine weiter entkoppeln: Quellen und Knob-Zustand sauber
    trennen. Das Overlay arbeitet über explizite Abhängigkeiten und Callbacks.
-5. `submitProblem` aus `community-store.js` in den Problemberichte-Bereich
-   verschieben.
+5. `submitProblem` wurde in `problem-report-store.js` verschoben; künftig
+   Formular und Turnstile-Anwendungslogik getrennt vom Datenzugriff halten.
 6. Doppelte App-Einstiegsseiten konsolidieren oder Unterschiede explizit
    dokumentieren. Routing, Rewrite-Regeln und Fractal-Demo separat testen.
 
