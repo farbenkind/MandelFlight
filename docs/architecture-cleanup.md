@@ -25,7 +25,10 @@ Ziels.
   Community-Konfigurationshinweis liegen jetzt in
   [community-auth-ui.js](../src/projekte/fractal-demo/community-auth-ui.js).
   Der Preset-Controller erhält weiterhin Auth-Snapshots für Berechtigungen;
-  OAuth-Aktionen und Fehlerbehandlung bleiben über Callbacks angebunden.
+  OAuth-Aktionen werden über den App-Bootstrap injiziert.
+- **2026-10-09:** Der Preset-Controller importiert keine OAuth-Implementierung
+  mehr direkt. [main.js](../src/projekte/fractal-demo/main.js) verbindet die
+  Auth-Aktionen mit dem Auth-UI und dem vorhandenen Preset-Fehlerwrapper.
 
 ## Kurzfassung
 
@@ -208,7 +211,7 @@ fachliche Regeln bleiben beim jeweiligen Feature.
 | [audio-input.js](../src/projekte/fractal-demo/audio-input.js), [audio-updates.js](../src/projekte/fractal-demo/audio-updates.js), [pcm-processor.js](../src/projekte/fractal-demo/pcm-processor.js), [beat-divisions.js](../src/projekte/fractal-demo/beat-divisions.js) | `src/features/audio/` | Capture, Worklet, Verarbeitung und Zeitbasis bündeln, ohne Audio-Verhalten zu ändern. |
 | [presets.js](../src/projekte/fractal-demo/presets.js), [preset-format.js](../src/projekte/fractal-demo/preset-format.js) | `src/features/presets/` | Formatkern getrennt lassen; Bibliothekscontroller, Karten und lokale Importe schrittweise trennen. |
 | [community-store.js](../src/projekte/fractal-demo/community-store.js) | `src/features/presets/data/` | Enthält jetzt nur Preset-/Like-Abfragen. Problembericht-Zugriff liegt separat in [problem-report-store.js](../src/projekte/fractal-demo/problem-report-store.js). |
-| [community-auth.js](../src/projekte/fractal-demo/community-auth.js), [community-session.js](../src/projekte/fractal-demo/community-session.js), [community-auth-ui.js](../src/projekte/fractal-demo/community-auth-ui.js) | `src/features/auth/` | OAuth, Session und Auth-UI sind getrennt; der Preset-Controller konsumiert Auth-Snapshots und führt UI-Aktionen über seinen Status-/Fehlerwrapper aus. |
+| [community-auth.js](../src/projekte/fractal-demo/community-auth.js), [community-session.js](../src/projekte/fractal-demo/community-session.js), [community-auth-ui.js](../src/projekte/fractal-demo/community-auth-ui.js) | `src/features/auth/` | OAuth, Session und Auth-UI sind getrennt; der App-Bootstrap injiziert Aktionen, während der Preset-Controller Auth-Snapshots für Berechtigungen konsumiert. |
 | [supabase-client.js](../src/projekte/fractal-demo/supabase-client.js) | `src/services/supabase/client.js` | Einen Client beibehalten; keine parallelen Clients pro Feature. |
 | [problem-report.js](../src/projekte/fractal-demo/problem-report.js) | `src/features/problem-reports/` | Formular, Turnstile-Anwendungslogik und Datenzugriff separat verantworten lassen. |
 | [ui/mod-overlay.js](../src/projekte/fractal-demo/ui/mod-overlay.js), [ui/param-controls.js](../src/projekte/fractal-demo/ui/param-controls.js) | `src/ui/overlays/modulation/` und `src/ui/components/` | Generische Controls von overlay-spezifischer Orchestrierung trennen. |
@@ -236,8 +239,8 @@ fachliche Regeln bleiben beim jeweiligen Feature.
 1. `main.js` zum dünnen Bootstrap machen. Fractal, Colormap, Audio,
    Modulation, Presets und Fullscreen-Kommunikation werden getrennt initialisiert.
 2. Session, Profilstatus und Auth-Controls wurden in
-   `community-session.js` und `community-auth-ui.js` verlagert. Als Nächstes
-   die verbleibende Auth-Abhängigkeit des Preset-Controllers weiter minimieren.
+   `community-session.js` und `community-auth-ui.js` verlagert; OAuth-Aktionen
+   werden über den App-Bootstrap injiziert.
 3. Preset-UI auf Bibliothekscontroller, Preset-Karten und lokale Legacy-Importe
    aufteilen. `preset-format.js` als Formatkern behalten.
 4. Modulations-Engine weiter entkoppeln: Quellen und Knob-Zustand sauber

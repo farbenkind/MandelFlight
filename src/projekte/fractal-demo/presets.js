@@ -1,7 +1,6 @@
 import { knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
 import { cmapParams } from "./colormap/params.js";
 import { buildVisualizationPreset, isVisualizationPreset, readVisualizationPreset } from "./preset-format.js";
-import { signIn, signOut } from "./community-auth.js";
 import { createCommunityAuthUI } from "./community-auth-ui.js";
 import {
     deletePreset, likePreset, listLikedPresetIds, listPresets, loadPresetData, recordPresetView,
@@ -11,7 +10,9 @@ import {
 const CATEGORIES = ["featured", "community", "mine"];
 const LOCAL_KEY = "presets";
 
-export function createPresets({ fractalRenderer, xlutUI, communitySession, onChange }) {
+export function createPresets({
+    fractalRenderer, xlutUI, communitySession, onSignIn, onSignOut, onChange,
+}) {
     const popup = document.getElementById("presetPopup");
     const status = document.getElementById("presetStatus");
     const nameInput = document.getElementById("presetNameInput");
@@ -342,8 +343,8 @@ export function createPresets({ fractalRenderer, xlutUI, communitySession, onCha
     createCommunityAuthUI({
         communitySession,
         execute: run,
-        onSignIn: () => signIn("github"),
-        onSignOut: signOut,
+        onSignIn,
+        onSignOut,
         onStateChange: onCommunityStateChange,
         onError: report,
     });

@@ -9,6 +9,7 @@ import { updateKnobVisual } from "./ui/knob-visual.js";
 import { createXlutUI } from "./ui/xlut-ui.js";
 import { applyModulations } from "./modulation-engine.js";
 import { createCommunitySession } from "./community-session.js";
+import { signIn as communitySignIn, signOut as communitySignOut } from "./community-auth.js";
 import { supabase } from "./supabase-client.js";
 
 const isEditor = Boolean(document.getElementById("cmKnobs"));
@@ -238,6 +239,8 @@ const presets = isEditor
     ? (await import("./presets.js")).createPresets({
         fractalRenderer, packCMParams, xlutUI,
         communitySession,
+        onSignIn: () => communitySignIn("github"),
+        onSignOut: communitySignOut,
         onChange: () => {
             broadcastView(fractalRenderer.getView());
             refreshCMEditor();
