@@ -11,6 +11,12 @@ test("PrimCmap power runs from dark at 0 to bright at 1", async () => {
     assert.match(shader, /fn primcolmap2[\s\S]*?spk\(c, 1\.0 - power, 10000\.0\)/);
 });
 
+test("Pastel value lift preserves black and white endpoints", async () => {
+    const shader = await readFile(new URL("./colormap/cmap-compute.wgsl", import.meta.url), "utf8");
+    assert.match(shader, /let value = hsv\.z \+ strength \* 0\.5 \* hsv\.z \* \(1\.0 - hsv\.z\);/);
+    assert.doesNotMatch(shader, /let value = mix\(hsv\.z, 1\.0/);
+});
+
 test("Relax leads each xCmap column and is packed in schema order", () => {
     const states = Object.fromEntries(cmapParams.map(param => [param.id, new KnobState(param.init)]));
     for (const [index, panel] of cmapSections[0].panels.entries()) {

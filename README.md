@@ -194,13 +194,15 @@ The existing knob modulation and preset storage also apply to HueShift.
 
 The miscCmap Pastel knob softens the final color after HueShift, preserving
 HSV hue. For strength p in 0-1, saturation becomes `S * (1 - 0.8*p)`
-and brightness becomes `V + (1-V) * 0.25*p`. At 0 the original RGB is
-returned unchanged; at 0.5 saturation is 60% of its original value and
-brightness moves 12.5% toward white; at 1 saturation is 20% and brightness
-moves 25% toward white. Black therefore lifts to dark gray, while white stays
-white. This is a global color look, not a spatial watercolor effect.
+and brightness becomes `V + p * 0.5 * V * (1-V)`. At 0 the original RGB is
+returned unchanged; black and white remain unchanged at every strength, while
+mid-range brightness is gently lifted. At p=1 and V=0.5, the value becomes
+0.625. This is a global color look, not a spatial watercolor effect.
 Palette and RGB curves share the same result. Modulation, fullscreen and
 presets use the standard schema; older presets default Pastel to 0.
+
+Follow-up: extend Pastel with selectable modes (for example, desaturation-only
+and endpoint-preserving brightness lift). No mode selector is implemented yet.
 
 Colormap knobs always show their parameter name below the dial. Hovering over
 the dial or dragging it shows the current GPU parameter value (including

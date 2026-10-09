@@ -145,7 +145,7 @@ fn pastelColor(rgb: vec3<f32>, amount: f32) -> vec3<f32> {
     }
     let hsv = rgbToHsv(clamp(rgb, vec3<f32>(0.0), vec3<f32>(1.0)));
     let saturation = hsv.y * (1.0 - 0.8 * strength);
-    let value = mix(hsv.z, 1.0, 0.25 * strength);
+    let value = hsv.z + strength * 0.5 * hsv.z * (1.0 - hsv.z);
     return hsvToRgb(vec3<f32>(hsv.x, saturation, value));
 }
 
