@@ -121,6 +121,14 @@ names require choosing another name or explicitly updating the existing card;
 storage failures are displayed without claiming success.
 Local storage is specific to the browser profile and origin, not a cloud backup.
 The S shortcut opens the device-save form, regardless of login state.
+Saving or updating captures a real JPEG thumbnail of the visualization canvas
+(no UI), with the displayed aspect ratio and a maximum edge of 320 pixels.
+The snapshot is optional presentation metadata in `preset_data.thumbnail`,
+independent of the visual-state codec. Account lists select only this JSON
+field rather than fetching the full visual payload. Private copies retain the
+image, using the same access rules as the preset; no storage bucket or schema
+migration is required. Thumbnails count towards existing preset-size quotas.
+Old presets retain their existing preview until explicitly saved again.
 The old shared Cloudflare KV cards and automatic list requests have been removed
 from the UI. Already imported account copies and KV originals are retained;
 the legacy API remains read-only for recovery.

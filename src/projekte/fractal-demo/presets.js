@@ -15,7 +15,7 @@ const LOCAL_KEY = "presets";
 
 export function createPresets({
     fractalRenderer, xlutUI, communitySession, onSignIn, onSignOut, onChange,
-    onSetLandingPreset,
+    onSetLandingPreset, captureThumbnail,
 }) {
     const popup = document.getElementById("presetPopup");
     const status = document.getElementById("presetStatus");
@@ -208,10 +208,12 @@ export function createPresets({
             }));
             if (currentUser && workspaceState.ready) actions.append(button("Private Kopie in mein Konto speichern", async assertCurrent => {
                 const data = readVisualizationPreset(preset);
+                const presetData = buildVisualizationPreset(preset.name, data.view, data.knobs, data.xlut);
+                if (preset.thumbnail) presetData.thumbnail = preset.thumbnail;
                 await savePreset({
                     name: preset.name,
                     description: preset.description || "Aus lokalem Speicher importiert",
-                    presetData: buildVisualizationPreset(preset.name, data.view, data.knobs, data.xlut),
+                    presetData,
                     publish: false,
                 }, currentUser.id);
                 assertCurrent();
@@ -354,6 +356,7 @@ export function createPresets({
             throw new Error("Name: 1-64 Zeichen, Buchstaben/Zahlen, Leerzeichen oder _ . - + ( ).");
         }
         const presetData = buildVisualizationPreset(name, fractalRenderer.getView(), serializeKnobs(knobs), xlutUI.getChains());
+        presetData.thumbnail = captureThumbnail();
         if (local) {
             localStore.save({
                 name, description: descriptionInput.value.trim(), presetData,

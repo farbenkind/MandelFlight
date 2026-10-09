@@ -12,6 +12,7 @@ import { createCommunitySession } from "./community-session.js";
 import { signIn as communitySignIn, signOut as communitySignOut } from "./community-auth.js";
 import { getLandingPreset, setLandingPreset } from "./landing-preset-store.js";
 import { readVisualizationPreset } from "./preset-format.js";
+import { capturePresetThumbnail } from "./preset-thumbnail.js";
 import { supabase } from "./supabase-client.js";
 
 const isEditor = Boolean(document.getElementById("cmKnobs"));
@@ -240,6 +241,11 @@ const communitySession = isEditor
 const presets = isEditor
     ? (await import("./presets.js")).createPresets({
         fractalRenderer, packCMParams, xlutUI,
+        captureThumbnail: () => {
+            refreshCMEditor();
+            fractalRenderer.render();
+            return capturePresetThumbnail(canvas);
+        },
         communitySession,
         onSignIn: () => communitySignIn("github"),
         onSignOut: communitySignOut,

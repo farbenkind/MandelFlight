@@ -1,7 +1,7 @@
 import { supabase } from "./supabase-client.js";
 import { getWorkspaceDataset, scopeWorkspaceRequest } from "./community-workspace.js";
 
-const PRESET_FIELDS = "id,owner_id,dataset,name,description,preview_palette,is_public,featured,featured_order,likes,views,saves,created_at,updated_at,source_preset_id,profiles!presets_owner_id_fkey(display_name)";
+const PRESET_FIELDS = "id,owner_id,dataset,name,description,thumbnail:preset_data->thumbnail,preview_palette,is_public,featured,featured_order,likes,views,saves,created_at,updated_at,source_preset_id,profiles!presets_owner_id_fkey(display_name)";
 
 function client() {
     if (!supabase) throw new Error("Community ist noch nicht konfiguriert. Supabase-URL und Anon-Key fehlen.");

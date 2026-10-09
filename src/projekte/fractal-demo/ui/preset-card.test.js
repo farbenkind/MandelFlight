@@ -79,3 +79,19 @@ test("local cards show device origin and retain supplied actions and local-name 
         "Auf diesem Geraet · Nur in diesem Browser auf dieser Domain. Kein Cloud-Backup.");
     assert.equal(card.children[2], importButton);
 });
+
+test("real snapshot images appear on account and device cards without loading external content", () => {
+    const thumbnail = { width: 320, height: 180, dataUrl: "data:image/jpeg;base64,/9j/" };
+    for (const createCard of [createCommunityPresetCard, createLocalPresetCard]) {
+        const card = createCard({ name: "Snapshot", thumbnail }, document.createElement("div"), document);
+        const image = card.children[0];
+        assert.equal(image.tagName, "img");
+        assert.equal(image.src, thumbnail.dataUrl);
+        assert.equal(image.alt, "Visualisierung von Snapshot beim Speichern");
+        assert.equal(image.loading, "lazy");
+        assert.equal(image.width, 320);
+        const unsafe = createCard({ name: "No image", thumbnail: { ...thumbnail, dataUrl: "https://example.com/a.jpg" } },
+            document.createElement("div"), document);
+        assert.notEqual(unsafe.children[0].tagName, "img");
+    }
+});

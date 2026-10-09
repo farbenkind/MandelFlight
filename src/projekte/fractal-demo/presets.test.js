@@ -17,6 +17,9 @@ test("geometry/color/post Visual presets and legacy formats restore the same vis
     const parsed = readVisualizationPreset(JSON.parse(JSON.stringify(preset)));
     assert.deepEqual(parsed.view, view);
     assert.deepEqual(parsed.knobs, knobs);
+    assert.deepEqual(readVisualizationPreset({
+        ...preset, thumbnail: { width: 320, height: 180, dataUrl: "data:image/jpeg;base64,/9j/" },
+    }), parsed);
     assert.equal(deserializeKnobs(parsed.knobs, cmapParams).pastel.cmValue, 0.75);
     const legacyV2 = readVisualizationPreset({
         version: 2, kind: "visualization",

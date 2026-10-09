@@ -79,6 +79,13 @@ Der aktuelle Runtime-Code ist damit noch nicht als offline-faehig zertifiziert.
 
 ## Fortschritt
 
+- **2026-10-10:** Echte Preset-Thumbnails werden beim expliziten Speichern
+  synchron aus dem frisch gerenderten Canvas aufgenommen. Die optionale
+  JPEG-Metadatenstruktur `thumbnail` bleibt vom Visual-State-Codec getrennt,
+  wird lokal und im bestehenden JSON-Payload gespeichert und beim Kopieren
+  uebernommen. Listen lesen nur die Thumbnail-Projektion; keine Migration,
+  kein Exportmodul und kein Hintergrund-Renderer fuer alte Presets.
+
 - **2026-10-09:** Meine Presets enthalten ausschliesslich den aktiven
   Kontobestand. Der eigene Bereich Auf diesem Geraet bietet lokales Speichern
   ohne Login sowie Laden, Aktualisieren, Loeschen und explizites privates

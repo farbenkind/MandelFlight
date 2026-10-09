@@ -760,6 +760,14 @@ button.polish {
         #101820;
 }
 
+.community-preset-thumbnail {
+    display: block;
+    width: 100%;
+    height: 150px;
+    object-fit: contain;
+    background: #000;
+}
+
 .community-preset-heading, .community-preset-actions {
     display: flex;
     align-items: center;

@@ -1,4 +1,17 @@
+import { isPresetThumbnail } from "../preset-thumbnail.js";
+
 function makePreview(entry, document) {
+    if (isPresetThumbnail(entry.thumbnail)) {
+        const image = document.createElement("img");
+        image.className = "community-preset-preview community-preset-thumbnail";
+        image.src = entry.thumbnail.dataUrl;
+        image.alt = `Visualisierung von ${entry.name} beim Speichern`;
+        image.width = entry.thumbnail.width;
+        image.height = entry.thumbnail.height;
+        image.loading = "lazy";
+        image.decoding = "async";
+        return image;
+    }
     const preview = document.createElement("div");
     preview.className = "community-preset-preview";
     const colors = entry.preview_palette ?? {};
@@ -51,6 +64,7 @@ export function createCommunityPresetCard(entry, actions, document = globalThis.
 export function createLocalPresetCard(preset, actions, document = globalThis.document) {
     const card = document.createElement("article");
     card.className = "community-preset-card legacy-preset";
+    if (isPresetThumbnail(preset.thumbnail)) card.append(makePreview(preset, document));
     const title = document.createElement("h3");
     title.textContent = preset.name;
     const note = document.createElement("p");

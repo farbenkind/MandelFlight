@@ -18,7 +18,9 @@ function fixture(initial = "[]") {
 
 test("signed-out local saves persist full visuals and allow explicit update, rename and delete", () => {
     const { store } = fixture();
-    store.save({ name: "Local", description: "Private device", presetData });
+    const thumbnail = { width: 320, height: 180, dataUrl: "data:image/jpeg;base64,/9j/" };
+    store.save({ name: "Local", description: "Private device", presetData: { ...presetData, thumbnail } });
+    assert.deepEqual(store.list()[0].thumbnail, thumbnail);
     assert.deepEqual(store.list()[0].color, presetData.color);
     assert.equal(store.list()[0].description, "Private device");
     assert.throws(() => store.save({ name: "Local", presetData }), /existiert/);
