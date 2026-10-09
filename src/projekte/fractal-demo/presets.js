@@ -2,6 +2,7 @@ import { knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
 import { cmapParams } from "./colormap/params.js";
 import { buildVisualizationPreset, isVisualizationPreset, readVisualizationPreset } from "./preset-format.js";
 import { createCommunityAuthUI } from "./community-auth-ui.js";
+import { createCommunityPresetCard, createLocalPresetCard } from "./ui/preset-card.js";
 import {
     deletePreset, likePreset, listLikedPresetIds, listPresets, loadPresetData, recordPresetView,
     saveCommunityPreset, savePreset, setFeatured, setPublished,
@@ -122,12 +123,6 @@ export function createPresets({
         }
         for (const preset of legacy.filter(isVisualizationPreset)) {
             if (!preset?.name || existingNames.has(preset.name)) continue;
-            const card = document.createElement("article");
-            card.className = "community-preset-card legacy-preset";
-            const title = document.createElement("h3");
-            title.textContent = preset.name;
-            const note = document.createElement("p");
-            note.textContent = "Lokales Legacy-Preset – nach Anmeldung in My Presets importierbar.";
             const importButton = button("Anmelden zum Import", async () => {
                 if (!currentUser) throw new Error("Zum Import bitte anmelden.");
                 const data = readVisualizationPreset(preset);
@@ -141,63 +136,11 @@ export function createPresets({
                 await refresh();
             });
             if (currentUser) importButton.textContent = "In My Presets importieren";
-            card.dataset.localName = preset.name;
-            card.append(title, note, importButton);
-            list.append(card);
+            list.append(createLocalPresetCard(preset, importButton));
         }
-    }
-
-    function makePreview(entry) {
-        const preview = document.createElement("div");
-        preview.className = "community-preset-preview";
-        const colors = entry.preview_palette ?? {};
-        const amount = key => {
-            const value = colors[key];
-            return Number.isFinite(value) ? Math.max(0, Math.min(255, Math.round(value * 255))) : 70;
-        };
-        preview.style.setProperty("--preview-a", `rgb(${amount("amount-r")}, ${amount("amount-g")}, ${amount("amount-b")})`);
-        preview.style.setProperty("--preview-b", `hsl(${Math.round((Number.isFinite(colors.phaseShift) ? colors.phaseShift : 0) * 360)}, 85%, 48%)`);
-        preview.setAttribute("aria-label", "Farbvorschau des Presets");
-        return preview;
-    }
-
-    function appendStats(card, entry) {
-        const stats = document.createElement("p");
-        stats.className = "community-preset-stats";
-        stats.textContent = `❤️ ${entry.likes}   👁 ${entry.views}   📦 ${entry.saves}`;
-        card.append(stats);
     }
 
     function renderEntry(entry) {
-        const card = document.createElement("article");
-        card.className = "community-preset-card";
-        card.append(makePreview(entry));
-
-        const heading = document.createElement("div");
-        heading.className = "community-preset-heading";
-        const title = document.createElement("h3");
-        title.textContent = entry.name;
-        heading.append(title);
-        if (entry.featured) {
-            const badge = document.createElement("span");
-            badge.className = "featured-badge";
-            badge.textContent = "★ Featured";
-            heading.append(badge);
-        }
-        card.append(heading);
-
-        const author = document.createElement("p");
-        author.className = "community-preset-author";
-        author.textContent = `von ${entry.profiles?.display_name || "MandelFlight User"}`;
-        card.append(author);
-        if (entry.description) {
-            const description = document.createElement("p");
-            description.className = "community-preset-description";
-            description.textContent = entry.description;
-            card.append(description);
-        }
-        appendStats(card, entry);
-
         const actions = document.createElement("div");
         actions.className = "community-preset-actions";
         actions.append(button("Laden", async () => {
@@ -244,8 +187,7 @@ export function createPresets({
                 await refresh();
             }));
         }
-        card.append(actions);
-        return card;
+        return createCommunityPresetCard(entry, actions);
     }
 
     async function refresh() {

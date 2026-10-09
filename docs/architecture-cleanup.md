@@ -29,6 +29,11 @@ Ziels.
 - **2026-10-09:** Der Preset-Controller importiert keine OAuth-Implementierung
   mehr direkt. [main.js](../src/projekte/fractal-demo/main.js) verbindet die
   Auth-Aktionen mit dem Auth-UI und dem vorhandenen Preset-Fehlerwrapper.
+- **2026-10-09:** Community- und lokale Legacy-Preset-Karten werden jetzt in
+  [ui/preset-card.js](../src/projekte/fractal-demo/ui/preset-card.js) gerendert.
+  Vorschau, Metadaten, Featured-Badge und Statistik sind vom Controller getrennt
+  und separat getestet. Aktionshandler, Berechtigungen und Datenzugriff bleiben
+  unverändert im Preset-Controller; das Kartenmodul erhält fertige DOM-Aktionen.
 
 ## Kurzfassung
 
@@ -73,7 +78,7 @@ dann in kleinen, testsicheren Gruppen Dateien verschieben.
 | Colormap | [colormap/](../src/projekte/fractal-demo/colormap) ist bereits fachlich gruppiert: GPU-Code, Parameter und WGSL-Shader. |
 | Modulation | [modulation.js](../src/projekte/fractal-demo/modulation.js), ca. 235 Zeilen; [knob-state.js](../src/projekte/fractal-demo/knob-state.js) enthält Zustand und Modulationsserialisierung. Die Evaluation liegt in [modulation-engine.js](../src/projekte/fractal-demo/modulation-engine.js), die `main.js` aufruft. |
 | Audio | [audio-input.js](../src/projekte/fractal-demo/audio-input.js) verbindet WebAudio, Worklet und WASM; [audio-updates.js](../src/projekte/fractal-demo/audio-updates.js) taktet Updates; [beat-divisions.js](../src/projekte/fractal-demo/beat-divisions.js) enthält Beat-Zeitbasis. |
-| Presets | [presets.js](../src/projekte/fractal-demo/presets.js), ca. 359 Zeilen. Formatlogik ist in [preset-format.js](../src/projekte/fractal-demo/preset-format.js), Supabase-Zugriffe in [community-store.js](../src/projekte/fractal-demo/community-store.js). |
+| Presets | [presets.js](../src/projekte/fractal-demo/presets.js) enthält Bibliothekssteuerung, Aktionen und Legacy-Import. Kartendarstellung liegt in [ui/preset-card.js](../src/projekte/fractal-demo/ui/preset-card.js), Formatlogik in [preset-format.js](../src/projekte/fractal-demo/preset-format.js), Supabase-Zugriffe in [community-store.js](../src/projekte/fractal-demo/community-store.js). |
 | Auth | [community-auth.js](../src/projekte/fractal-demo/community-auth.js) kapselt OAuth-Funktionen; [community-session.js](../src/projekte/fractal-demo/community-session.js) verwaltet Session und Adminprofil; [community-auth-ui.js](../src/projekte/fractal-demo/community-auth-ui.js) rendert Auth-Zustand und bindet die Controls. [supabase-client.js](../src/projekte/fractal-demo/supabase-client.js) erzeugt den Client. |
 | Problemberichte | [problem-report.js](../src/projekte/fractal-demo/problem-report.js) enthält Formularverhalten, Turnstile-Laden/-Verifikation und Meldungsmetadaten. [problem-report-store.js](../src/projekte/fractal-demo/problem-report-store.js) enthält den separaten Supabase-Datenzugriff. |
 | Overlay-/UI | [ui/](../src/projekte/fractal-demo/ui) gruppiert einige Komponenten. Das Modulations-Overlay koppelt UI direkt an globale Knobs und DOM-IDs. |
