@@ -106,6 +106,11 @@ workspace UI. RLS and privileged RPCs check the request workspace and admin
 eligibility; changing the UI alone cannot access B or grant admin privileges.
 Changing identity or workspace clears editing targets and account-bound UI
 state, but retains the current visualization. New sessions start in User / A.
+**Von MandelFlight abmelden** ends the app session in this browser, not the
+GitHub website session. GitHub may therefore sign the same account back in
+without prompting. To use another identity, switch accounts on github.com
+first, then sign in to MandelFlight. The auth panel explains this distinction;
+the app does not attempt to log the user out of GitHub.
 **Auf diesem Geraet speichern** is available without login and while signed in.
 **In meinem Konto speichern** requires a ready authenticated workspace.
 The form displays the explicit destination; it never silently substitutes one

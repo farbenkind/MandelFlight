@@ -11,6 +11,10 @@ test("Google sign-in is absent from every app entry page while GitHub remains", 
         const html = await readFile(entryPage, "utf8");
         assert.doesNotMatch(html, /authGoogleBtn|Mit Google anmelden/);
         assert.match(html, /authGithubBtn/);
+        assert.match(html, /id="authSignOutBtn" type="button">Von MandelFlight abmelden/);
+        assert.match(html, /id="authGithubSessionHint">Die Abmeldung gilt nur fuer MandelFlight/);
+        assert.match(html, /Deine GitHub-Sitzung bleibt aktiv/);
+        assert.match(html, /href="https:\/\/github.com\/" target="_blank" rel="noopener noreferrer"/);
         assert.match(html, /id="landingPresetAdminControls" class="hidden"/);
         assert.match(html, /id="setLandingPresetBtn"/);
         assert.doesNotMatch(html, /authSwitchAccountBtn|authGithubAccountInput/);

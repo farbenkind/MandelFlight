@@ -90,6 +90,13 @@ test("community auth UI reflects session state and binds auth actions", async ()
         assert.equal(typeof actions[0], "function");
         assert.equal(typeof actions[1], "function");
 
+        publishState({ user: null, isAdmin: false, canAdmin: false, workspaceReady: true });
+        assert.equal(fakeDocument.elements.get("authSignedOut").classList.toggles.get("hidden"), false);
+        assert.equal(fakeDocument.elements.get("authSignedIn").classList.toggles.get("hidden"), true);
+        assert.equal(fakeDocument.elements.get("authWorkspace").classList.toggles.get("hidden"), true);
+        assert.equal(fakeDocument.elements.get("problemBtn").disabled, true);
+        assert.match(fakeDocument.elements.get("authWorkspaceStatus").textContent, /Nicht angemeldet/);
+
         fakeDocument.elements.get("authWorkspaceMode").value = "test";
         fakeDocument.elements.get("authWorkspaceMode").change();
         assert.equal(actions.length, 3);
