@@ -11,9 +11,11 @@ export function createCommunityAuthUI({
     const userName = document.getElementById("authUserName");
     const problemButton = document.getElementById("problemBtn");
     const configNotice = document.getElementById("communityConfigNotice");
+    const landingPresetAdminControls = document.getElementById("landingPresetAdminControls");
 
     function render(state) {
         const user = state.user;
+        landingPresetAdminControls.classList.toggle("hidden", !state.isAdmin);
         signedOut.classList.toggle("hidden", Boolean(user));
         signedIn.classList.toggle("hidden", !user);
         userName.textContent =

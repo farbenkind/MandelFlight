@@ -10,6 +10,8 @@ import { createXlutUI } from "./ui/xlut-ui.js";
 import { applyModulations } from "./modulation-engine.js";
 import { createCommunitySession } from "./community-session.js";
 import { signIn as communitySignIn, signOut as communitySignOut } from "./community-auth.js";
+import { getLandingPreset, setLandingPreset } from "./landing-preset-store.js";
+import { readVisualizationPreset } from "./preset-format.js";
 import { supabase } from "./supabase-client.js";
 
 const isEditor = Boolean(document.getElementById("cmKnobs"));
@@ -241,6 +243,7 @@ const presets = isEditor
         communitySession,
         onSignIn: () => communitySignIn("github"),
         onSignOut: communitySignOut,
+        onSetLandingPreset: presetData => setLandingPreset(presetData, supabase),
         onChange: () => {
             broadcastView(fractalRenderer.getView());
             refreshCMEditor();
@@ -373,11 +376,29 @@ document.querySelectorAll("button").forEach(b => {
 console.log("knobs:", knobs);
 console.log("cmParams initial:", packCMParams());
 
-refreshCMEditor();
-fractalRenderer.render();          // und anzeigen
+async function loadLandingPreset() {
+    if (!supabase) return false;
+    try {
+        const preset = await getLandingPreset(supabase);
+        if (!preset) return false;
+        const data = readVisualizationPreset(preset);
+        fractalRenderer.setView(data.view);
+        Object.assign(knobs, deserializeKnobs(data.knobs, cmapParams));
+        xlutUI.setChains(data.xlut, false);
+        return true;
+    } catch (error) {
+        console.error("Willkommensvisual konnte nicht geladen werden:", error);
+        return false;
+    }
+}
 
-if (!launchState?.fractalParams) loadView();
-if (isEditor && !launchState) await presets.loadDefault();
+if (!launchState?.fractalParams) {
+    loadView();
+    const landingPresetLoaded = await loadLandingPreset();
+    if (isEditor && !landingPresetLoaded) await presets.loadDefault();
+}
+refreshCMEditor();
+fractalRenderer.render();
 //overlay.classList.toggle("hidden");
 //document.querySelector('.mod-toggle[data-param="pow-b"]').click();
 //document.querySelector('.mod-toggle[data-param="phaseShift"]').click();

@@ -23,6 +23,7 @@ function createDocument() {
         "authUserName",
         "problemBtn",
         "communityConfigNotice",
+        "landingPresetAdminControls",
         "authGithubBtn",
         "authSignOutBtn",
     ].map(id => [id, createElement()]));
@@ -67,8 +68,11 @@ test("community auth UI reflects session state and binds auth actions", async ()
         assert.equal(fakeDocument.elements.get("authSignedIn").classList.toggles.get("hidden"), false);
         assert.equal(fakeDocument.elements.get("authUserName").textContent, "user@example.com");
         assert.equal(fakeDocument.elements.get("problemBtn").disabled, false);
+        assert.equal(fakeDocument.elements.get("landingPresetAdminControls").classList.toggles.get("hidden"), false);
         assert.equal(states.at(-1).isAdmin, true);
 
+        publishState({ user: { id: "user-2" }, isAdmin: false });
+        assert.equal(fakeDocument.elements.get("landingPresetAdminControls").classList.toggles.get("hidden"), true);
         fakeDocument.elements.get("authGithubBtn").click();
         fakeDocument.elements.get("authSignOutBtn").click();
         assert.equal(actions.length, 2);

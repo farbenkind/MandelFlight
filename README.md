@@ -104,6 +104,8 @@ Database-enforced safeguards in the migration:
   most one private copy per user/source preset.
 - Supabase Row Level Security keeps private presets and problem reports private.
   Counters and Featured metadata cannot be set directly by a client.
+- The global welcome visualization is publicly readable, but can only be
+  changed through an admin-checked database function.
 - Problem reports include title, description, category, app version, browser,
   operating system, client timestamp, and the currently loaded preset ID when
   available. Browser and OS values are limited in size.
@@ -112,6 +114,8 @@ Database-enforced safeguards in the migration:
 
 1. Create a Supabase project. In its SQL Editor, run
    `supabase/migrations/202610090001_community_presets.sql`.
+   To enable the global welcome visualization, also run
+   `supabase/migrations/202610090003_landing_preset.sql`.
 2. Enable the OAuth providers you intend to offer in Supabase Authentication >
    Sign In / Providers. Add each provider's OAuth client ID/secret there (not in
    this repository). GitHub is the currently displayed community login option.
@@ -142,8 +146,9 @@ Database-enforced safeguards in the migration:
 5. Sign in once with Martin's account. In Supabase SQL Editor, promote that
    account for curation with:
    `update public.profiles set is_admin = true where id = (select id from auth.users where email = 'YOUR_EMAIL');`
-   Admins can mark/unmark public presets as Featured in the browser. Keep the
-   account email private and run this only in the Supabase dashboard.
+   Only accounts with `profiles.is_admin = true` can mark/unmark public
+   Featured presets or change the global welcome visualization. The email stays
+   private; run the promotion SQL only in the Supabase dashboard.
 6. To preserve the old shared KV library, set `SUPABASE_URL`,
    `SUPABASE_SERVICE_ROLE_KEY`, and `LEGACY_PRESET_OWNER_ID` in a private
    PowerShell session, then run `npm run presets:import-legacy`. The script

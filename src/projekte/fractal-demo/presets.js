@@ -12,6 +12,7 @@ const LOCAL_KEY = "presets";
 
 export function createPresets({
     fractalRenderer, xlutUI, communitySession, onSignIn, onSignOut, onChange,
+    onSetLandingPreset,
 }) {
     const popup = document.getElementById("presetPopup");
     const status = document.getElementById("presetStatus");
@@ -337,6 +338,17 @@ export function createPresets({
     document.getElementById("presetCloseBtn").addEventListener("click", close);
     document.getElementById("presetSaveAsBtn").addEventListener("click", showSave);
     document.getElementById("presetSaveBtn").addEventListener("click", () => run(saveCurrent));
+    document.getElementById("setLandingPresetBtn").addEventListener("click", () => run(async () => {
+        if (!currentIsAdmin) throw new Error("Nur Admins koennen das Willkommensvisual aendern.");
+        const presetData = buildVisualizationPreset(
+            "landingpreset",
+            fractalRenderer.getView(),
+            serializeKnobs(knobs),
+            xlutUI.getChains(),
+        );
+        await onSetLandingPreset(presetData);
+        status.textContent = "Das aktuelle Visual wurde als Willkommensvisual gespeichert.";
+    }));
     popup.addEventListener("keydown", event => {
         if (event.key === "Escape") { event.stopPropagation(); close(); }
     });
