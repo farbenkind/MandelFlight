@@ -120,9 +120,22 @@ Database-enforced safeguards in the migration:
 3. Copy `.env.example` to `.env.local` and fill in the Supabase Project URL and
    public anon/publishable key. The key is intentionally used by the browser;
    **never** put a Supabase service-role key in a `VITE_` variable or the repo.
-4. In Cloudflare Pages project `mandelflight`, configure the same
-   `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as **build-time
-   environment variables**, then build/deploy with `npm run deploy`.
+4. GitHub Actions builds and deploys production on every push to `main`.
+   In [GitHub Actions secrets](https://github.com/farbenkind/MandelFlight/settings/secrets/actions),
+   add these repository secrets:
+   - `VITE_SUPABASE_URL`: the Supabase project URL.
+   - `VITE_SUPABASE_ANON_KEY`: the public anon/publishable key (never a
+     service-role key).
+   - `CLOUDFLARE_API_TOKEN`: a Cloudflare API token with Account > Cloudflare
+     Pages > Edit permission, scoped to the MandelFlight Cloudflare account.
+   - `CLOUDFLARE_ACCOUNT_ID`: the Cloudflare account ID.
+   The workflow tests, builds with the two Vite variables, then deploys `dist`
+   to the `mandelflight` Pages project. Create the API token from Cloudflare
+   Profile > API Tokens > Create Token > Custom Token. In Cloudflare Pages,
+   open project `mandelflight` > Settings > Build > Branch control and disable
+   automatic Git deployments so pushes do not trigger a second build that
+   lacks the Vite secrets. Add all four GitHub secrets and disable automatic
+   Cloudflare Git deployments before pushing the workflow to `main`.
 5. Sign in once with Martin's account. In Supabase SQL Editor, promote that
    account for curation with:
    `update public.profiles set is_admin = true where id = (select id from auth.users where email = 'YOUR_EMAIL');`
