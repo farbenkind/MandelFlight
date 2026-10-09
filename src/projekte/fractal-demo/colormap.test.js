@@ -1,8 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { cmapParams, cmapSections, cmapStructWGSL, packCMParams } from "./colormap/params.js";
 import { KnobState, serializeKnobs, deserializeKnobs } from "./knob-state.js";
 import { updateKnobVisual } from "./ui/knob-visual.js";
+
+test("PrimCmap power runs from dark at 0 to bright at 1", async () => {
+    const shader = await readFile(new URL("./colormap/cmap-compute.wgsl", import.meta.url), "utf8");
+    assert.match(shader, /fn primcolmap1[\s\S]*?spk\(c, 1\.0 - power, 10000\.0\)/);
+    assert.match(shader, /fn primcolmap2[\s\S]*?spk\(c, 1\.0 - power, 10000\.0\)/);
+});
 
 test("Relax leads each xCmap column and is packed in schema order", () => {
     const states = Object.fromEntries(cmapParams.map(param => [param.id, new KnobState(param.init)]));

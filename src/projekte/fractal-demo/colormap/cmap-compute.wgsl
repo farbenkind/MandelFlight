@@ -67,13 +67,13 @@ fn powerWave(t: f32, shape: f32) -> f32 {
 fn primcolmap1(x: f32, amount: f32, power: f32, pos: f32, mult: f32, phaseShift: f32) -> f32 {
     let t = (x * mult * 20.0 - pos - phaseShift) * pi2;
     let c = 0.5 + small + (0.5-small) * cos(t);
-    return amount * spk(c, power, 10000.0);
+    return amount * spk(c, 1.0 - power, 10000.0);
 }
 fn primcolmap2(x: f32, amount: f32, shape:f32, power: f32, pos: f32, mult: f32, phaseShift: f32) -> f32 {
     let t = (x * mult * 20.0 - pos - phaseShift) * pi2;
     var c = small+(1-small)*powerWave(t,shape);
     //ec = powerWave(t,shape);
-    return amount * spk(c, power, 10000.0);
+    return amount * spk(c, 1.0 - power, 10000.0);
 }
 
 fn relaxDomain(x: f32, relax: f32) -> f32 {
