@@ -1,0 +1,41 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Deploy MandelFlight",
+      "type": "shell",
+      "command": "npm run deploy",
+      "problemMatcher": []
+    },
+    {
+      "label": "Open deploy status in VS Code",
+      "type": "shell",
+      "command": "echo ${input:openDeployStatus}",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "never",
+        "echo": false,
+        "focus": false
+      }
+    },
+    {
+      "label": "Deploy + open status in VS Code",
+      "dependsOn": [
+        "Deploy MandelFlight",
+        "Open deploy status in VS Code"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "openDeployStatus",
+      "type": "command",
+      "command": "simpleBrowser.show",
+      "args": [
+        "https://mandelflight.pages.dev/deploy-status"
+      ]
+    }
+  ]
+}

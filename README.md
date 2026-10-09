@@ -232,5 +232,8 @@ Live: https://mandelflight.pages.dev (Cloudflare Pages project `mandelflight`).
 Local development with hot reload: `npm run dev` (Vite prints the local URL).
 Deploy the current build to Pages: `npm run deploy`.
 This builds first, then uploads `dist` to the `mandelflight` Pages project on branch `main`.
+To deploy and then open the deploy status in VS Code's integrated browser, run
+`Terminal > Run Task > Deploy + open status in VS Code`. The status page appears
+after the deploy task succeeds.
 
 Test locally with `npm run cf:dev` (serves on http://127.0.0.1:8788).
