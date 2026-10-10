@@ -1,5 +1,25 @@
 # MandelFlight
 
+## Jam Prototype (local MVP)
+
+Open `/src/projekte/fractal-demo/jam/index.html` and choose Sender, then open
+the viewer link in another window on the same origin and browser profile.
+Start the microphone and clap or speak: RMS volume controls one WebGL2 circle,
+simple amplitude-rise impulses change its color and create up to three rings.
+The viewer test button tests only graphics, not microphone/network delivery.
+Stop releases microphone tracks; stale sender data fades to zero after one second.
+
+This independent three-file prototype uses Web Audio and BroadcastChannel,
+not the fractal engine, WASM audio analysis, accounts or preset system.
+Only `{senderId, level, pulseId}` measurements are shared, at 20 Hz; no audio is
+played, recorded or transmitted. Use exactly one sender. This is not musical
+beat detection. Microphone access needs permission and HTTPS or localhost.
+WebGL2 is required for the viewer.
+
+No communication between different devices/profiles, WebSocket relay, rooms,
+multiuser mixing, synchronization, streaming, persistence, optimization or
+future engine architecture is included.
+
 ## Experimental mobile rendering
 
 WebGPU/WebGL2-capable Android/iOS and coarse-pointer touch devices start with a

@@ -26,6 +26,7 @@ export default {
         'deploy-status': resolve(import.meta.dirname, 'deploy-status.html'),
         'fractal-demo': resolve(import.meta.dirname,         'src/projekte/fractal-demo/index.html'),
         'fractal-fullscreen': resolve(import.meta.dirname,    'src/projekte/fractal-demo/fullscreen.html'),
+        'jam': resolve(import.meta.dirname, 'src/projekte/fractal-demo/jam/index.html'),
                 'function-plotter': resolve(import.meta.dirname, 'src/projekte/function-plotter/index.html')
               }
     }

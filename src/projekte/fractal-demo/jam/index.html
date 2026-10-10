@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MandelFlight - Jam Prototype</title>
+</head>
+<body>
+    <canvas id="visual" hidden aria-label="Audio-reaktiver Kreis mit Impulswellen"></canvas>
+    <main>
+        <h1>Jam Prototype</h1>
+        <p>Ein Mikrofon. Ein Kreis. Gemeinsam ausprobieren.</p>
+        <nav>
+            <a href="?role=sender">Sender</a>
+            <a href="?role=viewer" target="_blank" rel="noopener">Zuschauer in neuem Fenster</a>
+        </nav>
+        <p class="hint">Beide Fenster auf derselben Domain im selben Browserprofil oeffnen.
+            Kein Netzwerk zwischen Geraeten. Kein Audio wird uebertragen oder aufgenommen.</p>
+        <section id="sender" hidden>
+            <button id="start" type="button">Mikrofon starten</button>
+            <button id="stop" type="button" disabled>Stop</button>
+            <label>Pegel <meter id="level" min="0" max="1" value="0"></meter></label>
+            <p>Klatschen oder sprechen: Lautstaerke steuert den Radius, Impulse wechseln Farbe und erzeugen Wellen.</p>
+        </section>
+        <section id="viewer" hidden>
+            <button id="test" type="button">Lokalen Testimpuls anzeigen</button>
+            <p>Der Testbutton prueft nur die Grafik. Fuer den Jam den Sender oeffnen und das Mikrofon starten.</p>
+        </section>
+        <p id="status" role="status" aria-live="polite">Sender oder Zuschauer auswaehlen.</p>
+    </main>
+    <script type="module" src="./main.js"></script>
+</body>
+</html>
