@@ -79,6 +79,13 @@ Der aktuelle Runtime-Code ist damit noch nicht als offline-faehig zertifiziert.
 
 ## Fortschritt
 
+- **2026-10-10:** Random als regulaere Registry-Source mit Distribution,
+  Center, Skew, Division und Phase. Beat-Sample-&-Hold verwendet ausschliesslich
+  Context-Signale und Context-Zufall; Runtime-Zustand bleibt ausserhalb von
+  Presetparametern. Gleichverteilung, begrenzte Normalverteilung und
+  U-Verteilung gehen kontinuierlich ineinander ueber. Bestehende Sources
+  und UI-Fabriken unveraendert; Glider bleibt zurueckgestellt.
+
 - **2026-10-10:** SourceContext erhaelt explizite Zeit, Signal-Snapshots und
   injizierbaren Zufall. Der Audiohost liefert Signale pro aktivem 40-Hz-Tick;
   Pause erzeugt keine nachzuholenden Schritte. Legacy-Oszillatorgeschwindigkeit

@@ -20,8 +20,34 @@ the audio host, not read from browser globals by source implementations.
 A compatibility adapter supports older direct source calls. Existing
 oscillator speed is intentionally preserved (frequency * deltaTime * 2/3);
 envelope and base/punch update behavior are unchanged. Runtime state remains
-outside serialized source parameters. Random and Glider sources are not
-implemented by this refactor.
+outside serialized source parameters. The context refactor itself did not
+add sources; Random was added separately below. Glider remains deferred.
+
+### Random modulation source
+
+**Random** is a regular Source, usable directly on targets or as a processor
+input. It outputs [0, 1] sample-and-hold values using only the tick context's
+beat position and random provider.
+
+- **Distribution** [-1, 1]: continuous quantile interpolation from a truncated
+  normal distribution (mean 0.5, sigma 0.15, bounded to [0, 1]) at -1,
+  through uniform at 0, to an arcsine U-distribution at +1.
+- **Center** [0, 1]: moves the neutral distribution's midpoint with continuous
+  piecewise scaling of its lower/upper halves; 0.5 is neutral.
+- **Skew** [-1, 1]: an odds warp biases toward lower/higher values;
+  0 is neutral. Center and Skew edits affect the next drawn sample.
+- **Division**: all existing beat divisions, including dotted/triplet values;
+  `1/1` is an additional spelling of `1B` (four beats).
+- **Phase** [0, 1]: positive offset in division units; 0.5 triggers offbeat,
+  and 1 has the same grid as 0.
+
+The first evaluation draws immediately. Later evaluations draw only when
+crossing a boundary, including the exact boundary. A skipped span draws once,
+not once per missed boundary. A backward beatclock reset holds the current
+value and resynchronizes. Changing Division/Phase reanchors without drawing.
+Random owns its held value and trigger state; presets serialize only the five
+parameters and restart runtime state on load. Pausing prevents evaluations;
+resume uses the current beat position with no replay. No Glider is implemented.
 
 MandelFlight currently targets PCs/laptops with WebGPU-capable graphics and a
 current browser (Chrome or Edge with hardware acceleration recommended).
