@@ -13,8 +13,8 @@ test("PrimCmap power runs from dark at 0 to bright at 1", async () => {
 
 test("Pastel value lift preserves black and white endpoints", async () => {
     const shader = await readFile(new URL("./colormap/cmap-compute.wgsl", import.meta.url), "utf8");
-    assert.match(shader, /let value = hsv\.z \+ strength \* 0\.5 \* hsv\.z \* \(1\.0 - hsv\.z\);/);
-    assert.doesNotMatch(shader, /let value = mix\(hsv\.z, 1\.0/);
+    assert.match(shader, /var value = hsv\.z \+ strength \* 0\.5 \* hsv\.z \* \(1\.0 - hsv\.z\);/);
+    assert.match(shader, /if \(version == 2\.0\) \{\s*value = mix\(hsv\.z, 1\.0, 0\.25 \* strength\);/);
 });
 
 test("Relax leads each xCmap column and is packed in schema order", () => {
@@ -28,7 +28,8 @@ test("Relax leads each xCmap column and is packed in schema order", () => {
         assert.ok(cmapStructWGSL.includes(`${relax.wgsl} : f32,`));
     }
     const packed = packCMParams(states);
-    assert.equal(packed.length, cmapParams.length);
+    assert.equal(packed.length, cmapParams.length + 1);
+    assert.equal(packed.at(-1), 2);
     cmapParams.forEach((param, index) => assert.equal(packed[index], Math.fround(states[param.id].cmValue)));
 });
 
@@ -66,7 +67,7 @@ test("Shift ends each xCmap column and retains channel/ALL values in presets and
 
 test("Pastel is neutral in old presets and retains modulated values in new snapshots", () => {
     const misc = cmapSections.find(section => section.id === "miscCmap");
-    assert.deepEqual(misc.panels[0].knobs.map(param => param.id), ["phaseShift", "hueShift", "pastel"]);
+    assert.deepEqual(misc.panels[0].knobs.map(param => param.id), ["phaseShift", "hueShift", "pastel", "contrast"]);
     const restored = deserializeKnobs(serializeKnobs({ hueShift: new KnobState(0.25) }), cmapParams);
     assert.deepEqual(restored.pastel, new KnobState(0));
     restored.pastel.liveValue = 0.5;

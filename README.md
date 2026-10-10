@@ -319,17 +319,33 @@ on the GPU, preserving HSV saturation and value (not perceptual luminance).
 Its 0-1 range represents a full turn: 0 and 1 are neutral, 0.5 is 180 degrees.
 The existing knob modulation and preset storage also apply to HueShift.
 
-The miscCmap Pastel knob softens the final color after HueShift, preserving
-HSV hue. For strength p in 0-1, saturation becomes `S * (1 - 0.8*p)`
-and brightness becomes `V + p * 0.5 * V * (1-V)`. At 0 the original RGB is
-returned unchanged; black and white remain unchanged at every strength, while
-mid-range brightness is gently lifted. At p=1 and V=0.5, the value becomes
-0.625. This is a global color look, not a spatial watercolor effect.
-Palette and RGB curves share the same result. Modulation, fullscreen and
-presets use the standard schema; older presets default Pastel to 0.
+The miscCmap color chain is generator PhaseShift -> HueShift -> Pastel ->
+Contrast. PhaseShift keeps its existing wave-phase behavior and UI position;
+it is not an offset into the finished palette. Gamma is not implemented.
 
-Follow-up: extend Pastel with selectable modes (for example, desaturation-only
-and endpoint-preserving brightness lift). No mode selector is implemented yet.
+Color pipeline version 2 restores the original dreamy HSV Pastel:
+`S' = S * (1 - 0.8*p)`, `V' = mix(V, 1, 0.25*p)`. Pastel 0 returns the original
+RGB unchanged; stronger settings lift even palette black towards gray.
+Contrast then preserves HSV H/S and maps V with
+`a = 2^(2*c - 1)`, `V' = V^a / (V^a + (1-V)^a)`.
+Contrast 0.5 returns RGB unchanged, 0 reduces and 1 increases midtone contrast
+without hard clipping. Endpoints remain fixed; lifted black approaches but
+does not become exact black. HSV V is not perceptual luminance.
+
+Presets explicitly store `colorPipelineVersion` separately from their data
+schema version. Missing versions use pipeline 1: the previous endpoint-preserving
+Pastel lift `V + p * 0.5 * V * (1-V)`. Missing Contrast defaults to 0.5.
+Load/save, local-to-account copies, landing visuals and fullscreen snapshots
+retain the pipeline version. Unknown versions fail explicitly. New editor
+state uses version 2; loading old presets never upgrades their look silently.
+An explicit "Neuen Farbstil verwenden" action switches the current legacy
+visual to version 2 after confirmation, without modifying its stored preset.
+Unversioned presets cannot distinguish algorithms from earlier app releases;
+version 1 preserves the behavior immediately preceding this change.
+
+Palette and RGB curves share the final result before 8-bit texture storage.
+Modulation, fullscreen and presets use the standard knob schema. The separately
+rendered black fractal interior is unaffected by palette color operators.
 
 Colormap knobs always show their parameter name below the dial. Hovering over
 the dial or dragging it shows the current GPU parameter value (including

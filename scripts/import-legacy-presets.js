@@ -40,7 +40,7 @@ for (const entry of entries) {
     const legacyPreset = await getJson(`${legacyBase}/${encodeURIComponent(entry.name)}`);
     const visual = readVisualizationPreset(legacyPreset);
     const presetData = buildVisualizationPreset(
-        entry.name, visual.view, visual.knobs, visual.xlut,
+        entry.name, visual.view, visual.knobs, visual.xlut, visual.colorPipelineVersion,
     );
     const createdAt = Number.isFinite(entry.created) && entry.created > 0
         ? new Date(entry.created).toISOString()

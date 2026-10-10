@@ -1,15 +1,18 @@
 import { cmapSections } from "./colormap/params.js";
+import { CURRENT_COLOR_PIPELINE_VERSION, readColorPipelineVersion } from "./colormap/color-pipeline.js";
 
 export function isVisualizationPreset(preset) {
     return Boolean(preset && typeof preset === "object")
         && (preset.kind === undefined || preset.kind === "visualization" || preset.kind === "visual");
 }
 
-export function buildVisualizationPreset(name, view, knobs, xlut) {
+export function buildVisualizationPreset(name, view, knobs, xlut, colorPipelineVersion = CURRENT_COLOR_PIPELINE_VERSION) {
     const section = id => Object.fromEntries(cmapSections.find(s => s.id === id)
-        .panels.flatMap(p => p.knobs).map(param => [param.id, knobs[param.id]]));
+        .panels.flatMap(p => p.knobs).filter(param => knobs[param.id] !== undefined)
+        .map(param => [param.id, knobs[param.id]]));
     return {
         schemaVersion: 1,
+        colorPipelineVersion: readColorPipelineVersion(colorPipelineVersion),
         kind: "visual",
         geometry: { fractal: { ...view } },
         color: {
@@ -22,6 +25,7 @@ export function buildVisualizationPreset(name, view, knobs, xlut) {
 
 export function readVisualizationPreset(preset) {
     if (!isVisualizationPreset(preset)) throw new Error("Kein Visualisierungs-Preset.");
+    const colorPipelineVersion = readColorPipelineVersion(preset.colorPipelineVersion);
     let view, knobs, xlut;
     if (preset.schemaVersion === 1 && preset.kind === "visual") {
         if (!preset.geometry?.fractal || !preset.color?.knobs || !preset.post?.knobs) {
@@ -49,5 +53,5 @@ export function readVisualizationPreset(preset) {
         || view.zoom <= 0 || view.maxIter < 1) {
         throw new Error("Ungueltige Fraktal- oder Knobdaten im Preset.");
     }
-    return { view, knobs, xlut };
+    return { view, knobs, xlut, colorPipelineVersion };
 }

@@ -15,7 +15,7 @@ const LOCAL_KEY = "presets";
 
 export function createPresets({
     fractalRenderer, xlutUI, communitySession, onSignIn, onSignOut, onChange,
-    onSetLandingPreset, captureThumbnail,
+    onSetLandingPreset, captureThumbnail, colorPipeline,
 }) {
     const popup = document.getElementById("presetPopup");
     const status = document.getElementById("presetStatus");
@@ -141,6 +141,7 @@ export function createPresets({
     function applyPreset(preset, entry) {
         const data = readVisualizationPreset(preset);
         const restored = deserializeKnobs(data.knobs, cmapParams);
+        colorPipeline.setVersion(data.colorPipelineVersion);
         fractalRenderer.setView(data.view);
         Object.assign(knobs, restored);
         xlutUI.setChains(data.xlut);
@@ -208,7 +209,7 @@ export function createPresets({
             }));
             if (currentUser && workspaceState.ready) actions.append(button("Private Kopie in mein Konto speichern", async assertCurrent => {
                 const data = readVisualizationPreset(preset);
-                const presetData = buildVisualizationPreset(preset.name, data.view, data.knobs, data.xlut);
+                const presetData = buildVisualizationPreset(preset.name, data.view, data.knobs, data.xlut, data.colorPipelineVersion);
                 if (preset.thumbnail) presetData.thumbnail = preset.thumbnail;
                 await savePreset({
                     name: preset.name,
@@ -355,7 +356,7 @@ export function createPresets({
         if (!/^[\p{L}\p{N} _.\-+()]{1,64}$/u.test(name)) {
             throw new Error("Name: 1-64 Zeichen, Buchstaben/Zahlen, Leerzeichen oder _ . - + ( ).");
         }
-        const presetData = buildVisualizationPreset(name, fractalRenderer.getView(), serializeKnobs(knobs), xlutUI.getChains());
+        const presetData = buildVisualizationPreset(name, fractalRenderer.getView(), serializeKnobs(knobs), xlutUI.getChains(), colorPipeline.getVersion());
         presetData.thumbnail = captureThumbnail();
         if (local) {
             localStore.save({
@@ -412,6 +413,7 @@ export function createPresets({
             fractalRenderer.getView(),
             serializeKnobs(knobs),
             xlutUI.getChains(),
+            colorPipeline.getVersion(),
         );
         await onSetLandingPreset(presetData);
         workspaceState.assert(ticket);

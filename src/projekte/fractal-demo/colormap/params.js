@@ -1,3 +1,5 @@
+import { CURRENT_COLOR_PIPELINE_VERSION, readColorPipelineVersion } from "./color-pipeline.js";
+
 // Einzige Quelle für alle Colormap-Parameter. Daraus entstehen:
 //   - die Knob-Panels im Editor (ui/cmap-ui.js)
 //   - das Float32Array für den GPU-Uniform-Buffer (packCMParams)
@@ -90,6 +92,7 @@ export const cmapSections = [
                 knob("phaseShift", "phaseShift", 0, "phaseShift"),
                 knob("hueShift", "hueShift", 0, "hueShift"),
                 knob("pastel", "Pastel", 0, "pastel"),
+                knob("contrast", "Contrast", 0.5, "contrast"),
             ],
         }],
     },
@@ -97,11 +100,14 @@ export const cmapSections = [
 
 export const cmapParams = cmapSections.flatMap(s => s.panels.flatMap(p => p.knobs));
 
-export function packCMParams(knobs) {
-    return new Float32Array(cmapParams.map(p => knobs[p.id].cmValue));
+export function packCMParams(knobs, colorPipelineVersion = CURRENT_COLOR_PIPELINE_VERSION) {
+    return new Float32Array([
+        ...cmapParams.map(p => knobs[p.id].cmValue),
+        readColorPipelineVersion(colorPipelineVersion),
+    ]);
 }
 
 export const cmapStructWGSL =
     "struct CMParams {\n" +
     cmapParams.map(p => `    ${p.wgsl} : f32,`).join("\n") +
-    "\n};";
+    "\n    colorPipelineVersion : f32,\n};";

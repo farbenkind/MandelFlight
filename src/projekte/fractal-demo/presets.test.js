@@ -11,7 +11,7 @@ test("geometry/color/post Visual presets and legacy formats restore the same vis
     states.pastel.cmValue = 0.75;
     const knobs = serializeKnobs(states);
     const preset = buildVisualizationPreset("New", view, knobs, [null, null, null]);
-    assert.deepEqual(Object.keys(preset), ["schemaVersion", "kind", "geometry", "color", "post"]);
+    assert.deepEqual(Object.keys(preset), ["schemaVersion", "colorPipelineVersion", "kind", "geometry", "color", "post"]);
     assert.deepEqual(Object.keys(preset.geometry), ["fractal"]);
     assert.equal(preset.post.knobs.pastel.cmValue, 0.75);
     const parsed = readVisualizationPreset(JSON.parse(JSON.stringify(preset)));

@@ -6,6 +6,8 @@ import { createColormapGpu } from "./colormap/colormap-gpu.js";
 import { debug, makeDraggable } from "./util.js";
 import { KnobState, knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
 import { cmapSections, cmapParams, packCMParams as packParams } from "./colormap/params.js";
+import { createColorPipeline } from "./colormap/color-pipeline.js";
+import { createColorPipelineControl } from "./ui/color-pipeline-control.js";
 import { buildCmapUI } from "./ui/cmap-ui.js";
 import { updateKnobVisual } from "./ui/knob-visual.js";
 import { createXlutUI } from "./ui/xlut-ui.js";
@@ -97,12 +99,15 @@ if (launchState?.fractalParams) fractalRenderer.setView(launchState.fractalParam
 
 
 
-const packCMParams = () => packParams(knobs);
+const colorPipeline = createColorPipeline();
+const packCMParams = () => packParams(knobs, colorPipeline.getVersion());
+let colorPipelineControl = null;
 
 function getSharedState() {
     return {
         fractalParams: fractalRenderer.getView(),
         knobs: serializeKnobs(knobs),
+        colorPipelineVersion: colorPipeline.getVersion(),
         xlut: xlutUI.getChains(),
     };
 }
@@ -130,7 +135,17 @@ if (isEditor) {
 } else {
     for (const param of cmapParams) knobs[param.id] = new KnobState(param.init);
 }
-if (launchState?.knobs) Object.assign(knobs, deserializeKnobs(launchState.knobs, cmapParams));
+if (launchState?.knobs) {
+    colorPipeline.setVersion(launchState.colorPipelineVersion);
+    Object.assign(knobs, deserializeKnobs(launchState.knobs, cmapParams));
+}
+if (isEditor) {
+    colorPipelineControl = createColorPipelineControl({
+        root: document.getElementById("miscCmap"),
+        colorPipeline,
+        onChange: refreshCMEditor,
+    });
+}
 
 const colormapGpu = createColormapGpu({
     device,
@@ -176,6 +191,7 @@ if (isEditor) initModWindow();
 /////////////////////////////////////////////////////////////////////////////
 
 function refreshCMEditor() {
+    colorPipelineControl?.refresh();
     if (isEditor) {
         document.querySelectorAll(".knob").forEach(element => {
             const state = knobs[element.dataset.param];
@@ -239,7 +255,7 @@ const communitySession = isEditor
 
 const presets = isEditor
     ? (await import("./presets.js")).createPresets({
-        fractalRenderer, packCMParams, xlutUI,
+        fractalRenderer, packCMParams, xlutUI, colorPipeline,
         captureThumbnail: () => {
             refreshCMEditor();
             fractalRenderer.render();
@@ -301,6 +317,7 @@ if (!isEditor && launchToken) {
         }
         if (event.data?.type !== "state") return;
         const state = event.data.state;
+        colorPipeline.setVersion(state.colorPipelineVersion);
         if (state.fractalParams) fractalRenderer.setView(state.fractalParams);
         Object.assign(knobs, deserializeKnobs(state.knobs, cmapParams));
         xlutUI.setChains(state.xlut, false);
@@ -377,6 +394,7 @@ async function loadLandingPreset() {
         const preset = await getLandingPreset(supabase);
         if (!preset) return false;
         const data = readVisualizationPreset(preset);
+        colorPipeline.setVersion(data.colorPipelineVersion);
         fractalRenderer.setView(data.view);
         Object.assign(knobs, deserializeKnobs(data.knobs, cmapParams));
         xlutUI.setChains(data.xlut, false);
