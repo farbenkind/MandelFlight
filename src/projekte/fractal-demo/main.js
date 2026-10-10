@@ -19,6 +19,7 @@ import { signIn as communitySignIn, signOut as communitySignOut } from "./commun
 import { getLandingPreset, setLandingPreset } from "./landing-preset-store.js";
 import { readVisualizationPreset } from "./preset-format.js";
 import { capturePresetThumbnail } from "./preset-thumbnail.js";
+import { isMobileRendering } from "./mobile-rendering.js";
 import { supabase } from "./supabase-client.js";
 
 const isEditor = Boolean(document.getElementById("cmKnobs"));
@@ -54,7 +55,19 @@ const { device, context, format } = await initializeGraphics(canvas);
 
 
 ///////// /// FractalParams - uniforms
-const fractalRenderer = createFractalRenderer({ canvas, context, device, format, onViewChange: broadcastView });
+const mobile = isMobileRendering();
+const fractalRenderer = createFractalRenderer({
+    canvas, context, device, format, onViewChange: broadcastView, mobile,
+    onRenderError: error => {
+        console.error("Mobile Fraktalberechnung fehlgeschlagen:", error);
+        window.dispatchEvent(new CustomEvent("mandelflight-render-error", { detail: error }));
+    },
+    onQualityChange: size => {
+        if (!mobile) return;
+        const hint = document.querySelector(".mobile-support-hint");
+        if (hint) hint.textContent = `Experimenteller Mobile-Modus: ${size.width} x ${size.height}, adaptiv, bis zu 30 FPS. Fuer volle Qualitaet am PC/Laptop ausprobieren. WebGPU bleibt erforderlich.`;
+    },
+});
 const { cmSize, colormapTexture: CMAP_Texture } = fractalRenderer;
 if (launchState?.fractalParams) fractalRenderer.setView(launchState.fractalParams);
 
@@ -198,8 +211,7 @@ function refreshCMEditor() {
             updateKnobVisual(element, state, { rotate: !state.knobPressed });
         });
     }
-    colormapGpu.update(packCMParams());
-    fractalRenderer.runCompute();
+    fractalRenderer.runCompute(() => colormapGpu.update(packCMParams()));
     broadcastSharedState();
 }
 
@@ -256,9 +268,10 @@ const communitySession = isEditor
 const presets = isEditor
     ? (await import("./presets.js")).createPresets({
         fractalRenderer, packCMParams, xlutUI, colorPipeline,
-        captureThumbnail: () => {
+        captureThumbnail: async () => {
             refreshCMEditor();
-            fractalRenderer.render();
+            await fractalRenderer.flushCompute();
+            fractalRenderer.render(true);
             return capturePresetThumbnail(canvas);
         },
         communitySession,

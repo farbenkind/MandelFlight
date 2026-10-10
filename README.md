@@ -1,5 +1,29 @@
 # MandelFlight
 
+## Experimental mobile rendering
+
+WebGPU-capable Android/iOS and coarse-pointer touch devices start with a
+360-pixel long edge, preserving the displayed aspect ratio and ignoring
+device pixel ratio. Resolution adapts through 240/360/480/640/800/1024 pixels:
+three completed workloads over 40 ms lower quality; 90 under 12 ms raise it.
+Changes have a five-second cooldown. Measurements use GPU queue completion
+wall time (including queued work), not hardware timestamp queries; long stalls
+over one second and hidden-tab samples are excluded.
+
+Mobile compute and presentation target at most 30 updates per second, with only
+one fractal compute workload awaiting GPU completion. Intermediate updates are
+coalesced to the newest palette/view, while audio/modulation retain their existing
+timing. Hidden mobile tabs stop requesting new renders and catch up to the latest
+state on return. Texture resources are recreated on quality/viewport changes; iterations,
+color operators and preset data remain unchanged. Thumbnails wait for a fresh
+render. Device-specific resolution is not saved into presets or copied to fullscreen.
+Desktop keeps its existing 1920x1080 render resolution and update behavior.
+
+This is experimental, not a guarantee for any phone/tablet, including T80.
+Missing WebGPU/adapter support cannot be fixed by reducing resolution; explicit
+startup errors and the PC/laptop recommendation remain. No WebGL fallback,
+pinch-zoom UI or responsive editor redesign is included.
+
 MandelFlight is an interactive workspace for experimenting with fractals, color,
 audio-reactive visuals, shaders, and mathematical transformations. The first
 prototype is the fractal demo from the `farbenkind/my-website` repository.

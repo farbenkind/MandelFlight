@@ -1,14 +1,15 @@
 import "./startup.css";
+import { isMobileRendering } from "./mobile-rendering.js";
 
 const mobileHint = document.createElement("aside");
 mobileHint.className = "mobile-support-hint";
+mobileHint.hidden = !isMobileRendering();
 mobileHint.setAttribute("role", "note");
-mobileHint.textContent = "Am besten am PC oder Laptop ausprobieren: MandelFlight ist grafikintensiv. Smartphones und Tablets werden derzeit nicht offiziell unterstuetzt.";
+mobileHint.textContent = "Experimenteller Mobile-Modus mit adaptiver Aufloesung. WebGPU bleibt erforderlich. Fuer volle Qualitaet am PC oder Laptop ausprobieren.";
 document.body.append(mobileHint);
 
-try {
-    await import("./main.js");
-} catch (error) {
+function showError(error) {
+    if (document.body.classList.contains("startup-failed")) return;
     console.error("MandelFlight konnte nicht gestartet werden:", error);
     mobileHint.remove();
     const panel = document.createElement("section");
@@ -17,7 +18,7 @@ try {
     const heading = document.createElement("h1");
     heading.textContent = "MandelFlight kann hier nicht starten";
     const message = document.createElement("p");
-    message.textContent = "Diese Visualisierung braucht WebGPU und ausreichend Grafikleistung. Smartphones und Tablets werden derzeit nicht offiziell unterstuetzt. Probiere MandelFlight auf deinem PC oder Laptop mit aktuellem Chrome oder Edge und aktivierter Hardwarebeschleunigung aus.";
+    message.textContent = "Diese Visualisierung braucht WebGPU und ausreichend Grafikleistung. Auch der experimentelle Mobile-Modus kann fehlendes WebGPU nicht ersetzen. Probiere MandelFlight auf deinem PC oder Laptop mit aktuellem Chrome oder Edge und aktivierter Hardwarebeschleunigung aus.";
     const details = document.createElement("p");
     details.textContent = `Technischer Hinweis: ${error instanceof Error ? error.message : String(error)}`;
     const link = document.createElement("a");
@@ -30,4 +31,11 @@ try {
     panel.append(heading, message, link, details, retry);
     document.body.append(panel);
     document.body.classList.add("startup-failed");
+}
+
+window.addEventListener("mandelflight-render-error", event => showError(event.detail));
+try {
+    await import("./main.js");
+} catch (error) {
+    showError(error);
 }

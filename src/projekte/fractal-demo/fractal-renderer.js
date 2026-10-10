@@ -1,6 +1,8 @@
 import { attachFractalNavigation } from "./fractal-navigation.js";
+import { createMobileQuality, createMobileComputeScheduler, mobileRenderSize } from "./mobile-rendering.js";
 
-export function createFractalRenderer({ canvas, context, device, format, onViewChange }) {
+export function createFractalRenderer({ canvas, context, device, format, onViewChange, mobile = false, onRenderError, onQualityChange }) {
+    const quality = mobile ? createMobileQuality() : null;
     function getCanvasAspect() {
         const bounds = canvas.getBoundingClientRect();
         return bounds.height > 0 ? bounds.width / bounds.height : canvas.width / canvas.height;
@@ -142,17 +144,45 @@ fn cs_main(@builtin(global_invocation_id) gid : vec3<u32>) {
         },
     });
 
-    const width = canvas.width;
-    const height = canvas.height;
-    const fractalTexture = device.createTexture({
-        size: { width, height },
-        format: "rgba8unorm",
-        usage:
-            GPUTextureUsage.STORAGE_BINDING |
-            GPUTextureUsage.TEXTURE_BINDING |
-            GPUTextureUsage.RENDER_ATTACHMENT,
-    });
-    const fractalView = fractalTexture.createView();
+    let width, height, fractalTexture, fractalRenderBindGroup, computeBindGroup;
+
+    function resizeTexture() {
+        const bounds = canvas.getBoundingClientRect();
+        const size = mobile ? mobileRenderSize(bounds.width || canvas.width, bounds.height || canvas.height,
+            quality.getLongEdge(), device.limits.maxTextureDimension2D) : { width: canvas.width, height: canvas.height };
+        if (fractalTexture && width === size.width && height === size.height) return false;
+        width = size.width;
+        height = size.height;
+        if (mobile) { canvas.width = width; canvas.height = height; }
+        const previousTexture = fractalTexture;
+        fractalTexture = device.createTexture({
+            size: { width, height },
+            format: "rgba8unorm",
+            usage:
+                GPUTextureUsage.STORAGE_BINDING |
+                GPUTextureUsage.TEXTURE_BINDING |
+                GPUTextureUsage.RENDER_ATTACHMENT,
+        });
+        const fractalView = fractalTexture.createView();
+        fractalRenderBindGroup = device.createBindGroup({
+            layout: fractalRenderPipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: fractalView },
+                { binding: 1, resource: sampler },
+            ],
+        });
+        computeBindGroup = device.createBindGroup({
+            layout: computePipeline.getBindGroupLayout(1),
+            entries: [
+                { binding: 0, resource: fractalView },
+                { binding: 1, resource: { buffer: fractalParamsBuffer } },
+                { binding: 2, resource: colormapTexture.createView() },
+            ],
+        });
+        previousTexture?.destroy();
+        onQualityChange?.({ width, height, longEdge: quality?.getLongEdge() });
+        return true;
+    }
 
     const sampler = device.createSampler({
         magFilter: "linear",
@@ -164,49 +194,51 @@ fn cs_main(@builtin(global_invocation_id) gid : vec3<u32>) {
         vertex: { module: shaderModule, entryPoint: "vs_main", buffers: [] },
         fragment: { module: shaderModule, entryPoint: "fs_main", targets: [{ format }] }
     });
-    const fractalRenderBindGroup = device.createBindGroup({
-        layout: fractalRenderPipeline.getBindGroupLayout(0),
-        entries: [
-            { binding: 0, resource: fractalView },
-            { binding: 1, resource: sampler },
-        ],
-    });
+    resizeTexture();
 
-    const computeBindGroup = device.createBindGroup({
-        layout: computePipeline.getBindGroupLayout(1),
-        entries: [
-            { binding: 0, resource: fractalView },
-            { binding: 1, resource: { buffer: fractalParamsBuffer } },
-            { binding: 2, resource: colormapTexture.createView() },
-        ],
-    });
-
-    const workgroupSizeX = 8;
-    const workgroupSizeY = 8;
-    const dispatchX = Math.ceil(width / workgroupSizeX);
-    const dispatchY = Math.ceil(height / workgroupSizeY);
-
-    const commandEncoder = device.createCommandEncoder();
-    const initialPass = commandEncoder.beginComputePass();
-    initialPass.setPipeline(computePipeline);
-    initialPass.setBindGroup(1, computeBindGroup);
-    initialPass.dispatchWorkgroups(dispatchX, dispatchY);
-    initialPass.end();
-    device.queue.submit([commandEncoder.finish()]);
-
-    function runCompute() {
+    function compute() {
+        resizeTexture();
+        fractalParams[4] = getCanvasAspect();
+        device.queue.writeBuffer(fractalParamsBuffer, 0, fractalParams);
         const encoder = device.createCommandEncoder();
         const pass = encoder.beginComputePass();
         pass.setPipeline(computePipeline);
         pass.setBindGroup(1, computeBindGroup);
-        pass.dispatchWorkgroups(dispatchX, dispatchY);
+        pass.dispatchWorkgroups(Math.ceil(width / 8), Math.ceil(height / 8));
         pass.end();
         device.queue.submit([encoder.finish()]);
     }
 
+    const scheduler = mobile ? createMobileComputeScheduler({
+        compute,
+        waitForGpu: () => device.queue.onSubmittedWorkDone(),
+        onSample: (elapsed, time) => {
+            if (!document.hidden && time - lastRender >= 1000 / 30) present();
+            if (!document.hidden && quality.sample(elapsed, time)) scheduler.request();
+        },
+        onError: onRenderError,
+    }) : null;
+    if (mobile) {
+        device.lost.then(info => scheduler.fail(new Error(`WebGPU-Geraet verloren: ${info.message}`)));
+    }
+
+    let pendingPalette = null;
+    function runCompute(beforeCompute, force = false) {
+        if (scheduler) {
+            if (beforeCompute) pendingPalette = beforeCompute;
+            if (document.hidden && !force) return;
+            scheduler.request(() => {
+                pendingPalette?.();
+                pendingPalette = null;
+            });
+        }
+        else { beforeCompute?.(); compute(); }
+    }
+    if (mobile) document.addEventListener("visibilitychange", () => { if (!document.hidden) runCompute(); });
+
     const resizeObserver = new ResizeObserver(() => {
         const aspect = getCanvasAspect();
-        if (fractalParams[4] === aspect) return;
+        if (fractalParams[4] === aspect && !mobile) return;
 
         fractalParams[4] = aspect;
         device.queue.writeBuffer(fractalParamsBuffer, 0, fractalParams);
@@ -214,7 +246,15 @@ fn cs_main(@builtin(global_invocation_id) gid : vec3<u32>) {
     });
     resizeObserver.observe(canvas);
 
-    function render() {
+    let lastRender = -Infinity;
+    function render(force = false) {
+        if (scheduler?.hasFailed()) return;
+        if (mobile && !force && (document.hidden || scheduler.isRunning() || performance.now() - lastRender < 1000 / 30)) return;
+        present();
+    }
+
+    function present() {
+        lastRender = performance.now();
         const encoder = device.createCommandEncoder();
         const pass = encoder.beginRenderPass({
             colorAttachments: [{
@@ -259,5 +299,10 @@ fn cs_main(@builtin(global_invocation_id) gid : vec3<u32>) {
         render,
         runCompute,
         setView,
+        flushCompute: () => {
+            if (!scheduler) return device.queue.onSubmittedWorkDone();
+            runCompute(undefined, true);
+            return scheduler.flush();
+        },
     };
 }

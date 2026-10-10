@@ -357,7 +357,10 @@ export function createPresets({
             throw new Error("Name: 1-64 Zeichen, Buchstaben/Zahlen, Leerzeichen oder _ . - + ( ).");
         }
         const presetData = buildVisualizationPreset(name, fractalRenderer.getView(), serializeKnobs(knobs), xlutUI.getChains(), colorPipeline.getVersion());
-        presetData.thumbnail = captureThumbnail();
+        const saveRevision = revision;
+        presetData.thumbnail = await captureThumbnail();
+        workspaceState.assert(ticket);
+        if (revision !== saveRevision) throw new Error("Preset-Ansicht hat sich geaendert. Speichern bitte erneut starten.");
         if (local) {
             localStore.save({
                 name, description: descriptionInput.value.trim(), presetData,

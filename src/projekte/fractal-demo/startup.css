@@ -1,5 +1,5 @@
 .mobile-support-hint {
-    display: none;
+    display: block;
     position: fixed;
     bottom: 12px;
     left: 12px;
@@ -13,9 +13,7 @@
     pointer-events: none;
 }
 
-@media (pointer: coarse) {
-    .mobile-support-hint { display: block; }
-}
+.mobile-support-hint[hidden] { display: none; }
 
 .startup-failed > :not(.startup-error):not(#deployStatusBtn) {
     display: none !important;
