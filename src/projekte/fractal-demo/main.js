@@ -10,6 +10,8 @@ import { buildCmapUI } from "./ui/cmap-ui.js";
 import { updateKnobVisual } from "./ui/knob-visual.js";
 import { createXlutUI } from "./ui/xlut-ui.js";
 import { applyModulations } from "./modulation-engine.js";
+import { createSourceContext } from "./modulation.js";
+import { createModulationRuntime } from "./modulation-runtime.js";
 import { createCommunitySession } from "./community-session.js";
 import { signIn as communitySignIn, signOut as communitySignOut } from "./community-auth.js";
 import { getLandingPreset, setLandingPreset } from "./landing-preset-store.js";
@@ -185,8 +187,10 @@ function refreshCMEditor() {
     broadcastSharedState();
 }
 
-function updateCMEditor() {
-    applyModulations(knobs);
+const modulationRuntime = createModulationRuntime();
+
+function updateCMEditor(signals) {
+    applyModulations(knobs, { sourceContext: createSourceContext(modulationRuntime.next(signals)) });
     refreshCMEditor();
 }
 
@@ -209,7 +213,10 @@ if (isEditor) {
             bpm.toFixed(1),
             beat_phase.toFixed(2)
         );
-        audioReact.update();
+        audioReact.update({
+            bassBeat: bass, midBeat: mid, treBeat: tre, bpm,
+            beatPhase: beat_phase, beatPosition: beat_position, beatConfidence: confidence,
+        });
         debug.on = false;
     }).catch((error) => {
         console.error("Audio input could not be started:", error);

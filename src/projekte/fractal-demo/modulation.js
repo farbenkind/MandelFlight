@@ -1,5 +1,6 @@
 import { fmod } from "./util.js";
 import { beatDivisions, dividedBeatPhase } from "./beat-divisions.js";
+import { legacyModulationSignals, MODULATION_DELTA_TIME } from "./modulation-runtime.js";
 
 export function makeEnv({ name = "env", source = "bassBeat", attack = 0.3, decay = 0.7 }) {
     return {
@@ -53,9 +54,10 @@ export function makeOsc1({ name, freq, shape }) {
             shape: { ui: "slider", min: -1.0, max: 1, exp: false, value: shape },
         },
 
-        update() {
+        update(context = createSourceContext()) {
             // Phase update
-            this.phase = fmod(this.phase + this.params.freq.value * (1 / 60), 1.0);
+            // Preserve the legacy 1/60 increment at the existing 40 Hz tick rate.
+            this.phase = fmod(this.phase + this.params.freq.value * context.deltaTime * (2 / 3), 1.0);
 
             const t = this.phase;
             const S = this.params.shape.value;
@@ -123,7 +125,10 @@ for (const [band, signal] of [["bass", "bassBeat"], ["mid", "midBeat"], ["tre", 
     });
     sourceRegistry.set(signal, {
         label: signal, category: "Source",
-        create: () => ({ name: signal, type: "beat", params: {}, update: () => window[signal] }),
+        create: () => ({
+            name: signal, type: "beat", params: {},
+            update: (context = createSourceContext()) => context.signal(signal),
+        }),
     });
 }
 sourceRegistry.set("osc1", {
@@ -154,11 +159,11 @@ for (const [name, signal] of Object.entries(beatClockSignals)) {
                     options: beatDivisions.map(({ value, label }) => ({ value, label })),
                 },
             },
-            update() {
+            update(context = createSourceContext()) {
                 if (name !== "beatPhase") {
-                    return signal(dividedBeatPhase(window.beatPosition, this.params.division.value));
+                    return signal(dividedBeatPhase(context.signal("beatPosition"), this.params.division.value));
                 }
-                const phase = window.beatPhase;
+                const phase = context.signal("beatPhase");
                 if (!Number.isFinite(phase)) {
                     throw new Error("BeatClock phase is not initialized.");
                 }
@@ -190,10 +195,34 @@ export function sourceInputParam(value) {
 const sourceInputs = new WeakMap();
 
 // One context per modulation tick: shared instances advance only once.
-export function createSourceContext() {
+export function createSourceContext({
+    deltaTime = MODULATION_DELTA_TIME, time = 0,
+    signals = legacyModulationSignals(), random = Math.random,
+} = {}) {
+    if (!Number.isFinite(deltaTime) || deltaTime < 0 || !Number.isFinite(time) || time < 0) {
+        throw new Error("Modulation time and deltaTime must be finite and nonnegative.");
+    }
+    if (!signals || typeof signals !== "object" || typeof random !== "function") {
+        throw new Error("Modulation signals and random provider are invalid.");
+    }
+    const snapshot = { ...signals };
     const values = new Map();
     const active = [];
     return {
+        deltaTime,
+        time,
+        signal(name) {
+            const value = snapshot[name];
+            if (!Number.isFinite(value)) throw new Error(`Modulation signal ${name} is not initialized or finite.`);
+            return value;
+        },
+        random() {
+            const value = random();
+            if (!Number.isFinite(value) || value < 0 || value >= 1) {
+                throw new Error("Modulation random provider must return a value in [0, 1).");
+            }
+            return value;
+        },
         evaluate(source) {
             if (values.has(source)) return values.get(source);
             if (active.some(item => item === source || item.name === source.name)) {

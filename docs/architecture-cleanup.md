@@ -79,6 +79,13 @@ Der aktuelle Runtime-Code ist damit noch nicht als offline-faehig zertifiziert.
 
 ## Fortschritt
 
+- **2026-10-10:** SourceContext erhaelt explizite Zeit, Signal-Snapshots und
+  injizierbaren Zufall. Der Audiohost liefert Signale pro aktivem 40-Hz-Tick;
+  Pause erzeugt keine nachzuholenden Schritte. Legacy-Oszillatorgeschwindigkeit
+  bleibt bewusst erhalten; bestehende Envelope-/Base-/Punch-Semantik bleibt
+  unveraendert. Browserglobale liegen nur im Kompatibilitaetsadapter.
+  Random und Glider sind nachfolgende Features, nicht Teil dieses Refactors.
+
 - **2026-10-10:** Audio-Reaktionspause als expliziter Runtime-Schalter in
   [audio-react-control.js](../src/projekte/fractal-demo/audio-react-control.js).
   Button und Space sperren nur automatische Modulationsupdates; manuelle

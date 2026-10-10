@@ -12,6 +12,17 @@ Click again or press Space to resume. Microphone analysis continues; this is
 not a microphone mute. Space is ignored in form controls and open dialogs.
 The pause is runtime-only, not stored in presets.
 
+Modulation ticks receive an explicit signal snapshot, `deltaTime` (seconds),
+active modulation `time` and injectable random provider through SourceContext.
+The live host retains the existing fixed 40 Hz step; paused callbacks do not
+advance modulation time or replay missed ticks. Beat signals are passed by
+the audio host, not read from browser globals by source implementations.
+A compatibility adapter supports older direct source calls. Existing
+oscillator speed is intentionally preserved (frequency * deltaTime * 2/3);
+envelope and base/punch update behavior are unchanged. Runtime state remains
+outside serialized source parameters. Random and Glider sources are not
+implemented by this refactor.
+
 MandelFlight currently targets PCs/laptops with WebGPU-capable graphics and a
 current browser (Chrome or Edge with hardware acceleration recommended).
 Phones and tablets are not officially supported; compatible devices may run

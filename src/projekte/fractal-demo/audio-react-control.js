@@ -15,8 +15,8 @@ export function createAudioReactControl(button, onUpdate) {
     render();
     return {
         toggle,
-        update() {
-            if (!paused) onUpdate();
+        update(...args) {
+            if (!paused) onUpdate(...args);
         },
     };
 }
