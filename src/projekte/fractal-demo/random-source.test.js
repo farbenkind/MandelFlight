@@ -100,16 +100,45 @@ test("distribution continuously morphs bounded normal through uniform to U-shape
     const uniform = statistics({ distribution: 0 });
     const u = statistics({ distribution: 1 });
     assert.ok(normal.middle > 0.65);
-    assert.ok(normal.variance < 0.023);
+    assert.ok(normal.variance > 0.00027 && normal.variance < 0.00028);
     assert.ok(Math.abs(uniform.variance - 1 / 12) < 0.0001);
-    assert.ok(u.edges > 0.4);
-    assert.ok(Math.abs(u.variance - 1 / 8) < 0.0001);
+    assert.equal(u.edges, 1);
+    assert.ok(u.variance > 0.23);
     for (const result of [normal, uniform, u]) assert.ok(Math.abs(result.mean - 0.5) < 1e-6);
     for (const distribution of [-0.7, 0, 0.7]) {
         const a = tick(createSource("random", { distribution }), 0, () => 0.2);
         const b = tick(createSource("random", { distribution: distribution + 0.00001 }), 0, () => 0.2);
         assert.ok(Math.abs(a - b) < 0.00001);
     }
+});
+
+test("extreme normal variance is reduced by 1/81 and U lobes are nine times narrower", () => {
+    const normal = createSource("random", { distribution: -1 });
+    const u = createSource("random", { distribution: 1 });
+    const count = 10000;
+    let normalVariance = 0, previousVariance = 0;
+    let leftSum = 0, leftSquares = 0, oldLeftSum = 0, oldLeftSquares = 0;
+    for (let i = 0; i < count; i++) {
+        const probability = (i + 0.5) / count;
+        const value = tick(normal, i, () => probability);
+        const previous = 0.5 + (value - 0.5) * 9;
+        normalVariance += (value - 0.5) ** 2;
+        previousVariance += (previous - 0.5) ** 2;
+        const edge = tick(u, i, () => probability);
+        const arcsine = Math.sin(probability * Math.PI / 2) ** 2;
+        if (i < count / 2) {
+            assert.ok(Math.abs(edge * 9 - arcsine) < 1e-12);
+            leftSum += edge;
+            leftSquares += edge ** 2;
+            oldLeftSum += arcsine;
+            oldLeftSquares += arcsine ** 2;
+        } else assert.ok(Math.abs((1 - edge) * 9 - (1 - arcsine)) < 1e-12);
+    }
+    assert.ok(Math.abs(normalVariance / previousVariance - 1 / 81) < 1e-12);
+    const n = count / 2;
+    const variance = leftSquares / n - (leftSum / n) ** 2;
+    const oldVariance = oldLeftSquares / n - (oldLeftSum / n) ** 2;
+    assert.ok(Math.abs(variance / oldVariance - 1 / 81) < 1e-12);
 });
 
 test("Center and Skew bias in the specified directions and endpoints stay bounded", () => {

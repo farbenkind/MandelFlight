@@ -30,8 +30,17 @@ input. It outputs [0, 1] sample-and-hold values using only the tick context's
 beat position and random provider.
 
 - **Distribution** [-1, 1]: continuous quantile interpolation from a truncated
-  normal distribution (mean 0.5, sigma 0.15, bounded to [0, 1]) at -1,
-  through uniform at 0, to an arcsine U-distribution at +1.
+  narrow normal distribution at -1 through uniform at 0 to narrow U-shaped
+  edge lobes at +1. The former bounded normal (mean 0.5, sigma 0.15) is
+  compressed around 0.5 by 1/9, reducing its variance exactly to 1/81.
+  At +1 each half of the former arcsine distribution is compressed toward
+  its respective edge by 1/9; each lobe's variance becomes 1/81, while the
+  overall variance increases. Center=0.5 and Skew=0 are the calibration baseline.
+  Existing nonzero Distribution presets intentionally become more concentrated;
+  uniform output and trigger timing remain unchanged.
+  At neutral Center/Skew, the central 95% interval of the new normal spans
+  about 17.6 degrees on a 270-degree knob before Amount/Transform, not a
+  guaranteed 10-degree interval.
 - **Center** [0, 1]: moves the neutral distribution's midpoint with continuous
   piecewise scaling of its lower/upper halves; 0.5 is neutral.
 - **Skew** [-1, 1]: an odds warp biases toward lower/higher values;

@@ -79,6 +79,13 @@ Der aktuelle Runtime-Code ist damit noch nicht als offline-faehig zertifiziert.
 
 ## Fortschritt
 
+- **2026-10-10:** Random-Endstellungen nachkalibriert: Normalstreuung um
+  Faktor 1/9 komprimiert (Varianz 1/81 des vorherigen Werts), U-Haelften
+  jeweils um Faktor 1/9 an ihren Rand komprimiert. Gesamtvarianz der U-Form
+  steigt; die Varianz pro Randhaeufung sinkt auf 1/81. Gleichverteilung,
+  Trigger und Presetstruktur unveraendert. Nichtneutrale Distribution-Werte
+  bestehender Presets werden absichtlich staerker konzentriert.
+
 - **2026-10-10:** Random als regulaere Registry-Source mit Distribution,
   Center, Skew, Division und Phase. Beat-Sample-&-Hold verwendet ausschliesslich
   Context-Signale und Context-Zufall; Runtime-Zustand bleibt ausserhalb von

@@ -1,6 +1,7 @@
 import { beatDivisions } from "./beat-divisions.js";
 
 const divisions = [...beatDivisions, { value: "1/1", label: "1/1 (1 Bar)", beats: 4 }];
+const EXTREME_WIDTH_SCALE = 1 / 9;
 
 function normalCdf(x) {
     const z = x / Math.SQRT2;
@@ -25,10 +26,16 @@ function normalQuantile(probability) {
 
 function sample(context, distribution, center, skew) {
     const uniform = context.random();
+    const narrowNormal = distribution < 0
+        ? 0.5 + (normalQuantile(uniform) - 0.5) * EXTREME_WIDTH_SCALE : uniform;
+    const arcsine = Math.sin(uniform * Math.PI / 2) ** 2;
+    const narrowU = uniform < 0.5
+        ? arcsine * EXTREME_WIDTH_SCALE
+        : 1 - (1 - arcsine) * EXTREME_WIDTH_SCALE;
     // Interpolating quantiles gives continuous shapes without switching distribution modes.
     const shaped = distribution < 0
-        ? uniform + (-distribution) * (normalQuantile(uniform) - uniform)
-        : uniform + distribution * (Math.sin(uniform * Math.PI / 2) ** 2 - uniform);
+        ? uniform + (-distribution) * (narrowNormal - uniform)
+        : uniform + distribution * (narrowU - uniform);
     const centered = shaped <= 0.5
         ? shaped * 2 * center
         : center + (shaped - 0.5) * 2 * (1 - center);
