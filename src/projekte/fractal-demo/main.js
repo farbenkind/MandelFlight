@@ -7,7 +7,6 @@ import { debug, makeDraggable } from "./util.js";
 import { KnobState, knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
 import { cmapSections, cmapParams, packCMParams as packParams } from "./colormap/params.js";
 import { createColorPipeline } from "./colormap/color-pipeline.js";
-import { createColorPipelineControl } from "./ui/color-pipeline-control.js";
 import { buildCmapUI } from "./ui/cmap-ui.js";
 import { updateKnobVisual } from "./ui/knob-visual.js";
 import { createXlutUI } from "./ui/xlut-ui.js";
@@ -121,7 +120,6 @@ if (launchState?.fractalParams) fractalRenderer.setView(launchState.fractalParam
 
 const colorPipeline = createColorPipeline();
 const packCMParams = () => packParams(knobs, colorPipeline.getVersion());
-let colorPipelineControl = null;
 
 function getSharedState() {
     return {
@@ -158,13 +156,6 @@ if (isEditor) {
 if (launchState?.knobs) {
     colorPipeline.setVersion(launchState.colorPipelineVersion);
     Object.assign(knobs, deserializeKnobs(launchState.knobs, cmapParams));
-}
-if (isEditor) {
-    colorPipelineControl = createColorPipelineControl({
-        root: document.getElementById("miscCmap"),
-        colorPipeline,
-        onChange: refreshCMEditor,
-    });
 }
 
 const colormapOptions = {
@@ -212,7 +203,6 @@ if (isEditor) initModWindow();
 /////////////////////////////////////////////////////////////////////////////
 
 function refreshCMEditor() {
-    colorPipelineControl?.refresh();
     if (isEditor) {
         document.querySelectorAll(".knob").forEach(element => {
             const state = knobs[element.dataset.param];

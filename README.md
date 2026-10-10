@@ -381,8 +381,7 @@ Pastel lift `V + p * 0.5 * V * (1-V)`. Missing Contrast defaults to 0.5.
 Load/save, local-to-account copies, landing visuals and fullscreen snapshots
 retain the pipeline version. Unknown versions fail explicitly. New editor
 state uses version 2; loading old presets never upgrades their look silently.
-An explicit "Neuen Farbstil verwenden" action switches the current legacy
-visual to version 2 after confirmation, without modifying its stored preset.
+Pipeline versioning is internal; the editor has no style label or upgrade button.
 Unversioned presets cannot distinguish algorithms from earlier app releases;
 version 1 preserves the behavior immediately preceding this change.
 
