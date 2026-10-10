@@ -2,7 +2,7 @@
 
 ## Experimental mobile rendering
 
-WebGPU-capable Android/iOS and coarse-pointer touch devices start with a
+WebGPU/WebGL2-capable Android/iOS and coarse-pointer touch devices start with a
 360-pixel long edge, preserving the displayed aspect ratio and ignoring
 device pixel ratio. Resolution adapts through 240/360/480/640/800/1024 pixels:
 three completed workloads over 40 ms lower quality; 90 under 12 ms raise it.
@@ -17,12 +17,31 @@ timing. Hidden mobile tabs stop requesting new renders and catch up to the lates
 state on return. Texture resources are recreated on quality/viewport changes; iterations,
 color operators and preset data remain unchanged. Thumbnails wait for a fresh
 render. Device-specific resolution is not saved into presets or copied to fullscreen.
-Desktop keeps its existing 1920x1080 render resolution and update behavior.
+WebGPU desktop keeps its existing 1920x1080 render resolution and update behavior.
 
 This is experimental, not a guarantee for any phone/tablet, including T80.
-Missing WebGPU/adapter support cannot be fixed by reducing resolution; explicit
-startup errors and the PC/laptop recommendation remain. No WebGL fallback,
-pinch-zoom UI or responsive editor redesign is included.
+Missing WebGPU/adapter support cannot be fixed by reducing resolution; WebGL2
+is now attempted as a fallback. Explicit startup errors and the PC/laptop
+recommendation remain when neither backend works. No pinch-zoom UI or responsive
+editor redesign is included.
+
+### WebGL2 compatibility backend
+
+WebGPU is preferred. Missing API/adapter, device acquisition or graphics-context
+initialization failures are logged and trigger a fresh WebGL2 canvas. No WebGL1
+or CPU fractal fallback is provided. GLSL ES 3.00 fragment shaders generate the
+1024-entry RGBA8 palette and render the Mandelbrot image into an RGBA8 framebuffer.
+Palette uniforms use the shared parameter schema; xCmap warps/LUTs, generator
+PhaseShift, HueShift, both versioned Pastel looks and Contrast retain their semantics.
+The palette/curve previews use the generated palette pixels with 2D canvases.
+Presets, audio, modulation, navigation and fullscreen state are backend-independent.
+
+WebGL2 uses GPU fences and the shared scheduler for one pending GPU workload,
+coalescing and up to 30 Hz, including desktop fallback. Mobile additionally uses
+adaptive resolution. Iterations are not silently capped. Context loss and
+shader/link errors are surfaced explicitly; recovery requires reload. Floating-point
+shader calculations can differ between APIs/drivers, especially at deep zoom.
+Supporting WebGL2 does not guarantee adequate performance on any specific T80.
 
 MandelFlight is an interactive workspace for experimenting with fractals, color,
 audio-reactive visuals, shaders, and mathematical transformations. The first

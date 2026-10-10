@@ -5,7 +5,7 @@ const mobileHint = document.createElement("aside");
 mobileHint.className = "mobile-support-hint";
 mobileHint.hidden = !isMobileRendering();
 mobileHint.setAttribute("role", "note");
-mobileHint.textContent = "Experimenteller Mobile-Modus mit adaptiver Aufloesung. WebGPU bleibt erforderlich. Fuer volle Qualitaet am PC oder Laptop ausprobieren.";
+mobileHint.textContent = "Experimenteller Mobile-Modus mit adaptiver Aufloesung und WebGPU/WebGL2. Fuer volle Qualitaet am PC oder Laptop ausprobieren.";
 document.body.append(mobileHint);
 
 function showError(error) {
@@ -18,7 +18,7 @@ function showError(error) {
     const heading = document.createElement("h1");
     heading.textContent = "MandelFlight kann hier nicht starten";
     const message = document.createElement("p");
-    message.textContent = "Diese Visualisierung braucht WebGPU und ausreichend Grafikleistung. Auch der experimentelle Mobile-Modus kann fehlendes WebGPU nicht ersetzen. Probiere MandelFlight auf deinem PC oder Laptop mit aktuellem Chrome oder Edge und aktivierter Hardwarebeschleunigung aus.";
+    message.textContent = "Diese Visualisierung braucht WebGPU oder WebGL2 und ausreichend Grafikleistung. Probiere MandelFlight auf deinem PC oder Laptop mit aktuellem Chrome oder Edge und aktivierter Hardwarebeschleunigung aus.";
     const details = document.createElement("p");
     details.textContent = `Technischer Hinweis: ${error instanceof Error ? error.message : String(error)}`;
     const link = document.createElement("a");

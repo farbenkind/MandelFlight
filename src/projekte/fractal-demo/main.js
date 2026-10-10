@@ -1,5 +1,5 @@
 import { createFractalRenderer } from "./fractal-renderer.js";
-import { initializeGraphics } from "./gpu-startup.js";
+import { initializeGraphicsBackend } from "./graphics-backend.js";
 import { startAudioInput } from "./audio-input.js";
 import { createAudioReactControl, handleAudioReactShortcut } from "./audio-react-control.js";
 import { createColormapGpu } from "./colormap/colormap-gpu.js";
@@ -41,8 +41,11 @@ if (launchStateKey) {
 
 
 /////////////////  Webgui Settup
-const canvas = document.getElementById("fractalCanvas");
-const { device, context, format } = await initializeGraphics(canvas);
+let canvas = document.getElementById("fractalCanvas");
+const graphics = await initializeGraphicsBackend(canvas);
+if (graphics.canvas) canvas = graphics.canvas;
+const { device, context, format } = graphics;
+document.body.dataset.renderBackend = graphics.backend;
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -56,18 +59,22 @@ const { device, context, format } = await initializeGraphics(canvas);
 
 ///////// /// FractalParams - uniforms
 const mobile = isMobileRendering();
-const fractalRenderer = createFractalRenderer({
+const rendererOptions = {
     canvas, context, device, format, onViewChange: broadcastView, mobile,
     onRenderError: error => {
-        console.error("Mobile Fraktalberechnung fehlgeschlagen:", error);
+        console.error("Fraktalberechnung fehlgeschlagen:", error);
         window.dispatchEvent(new CustomEvent("mandelflight-render-error", { detail: error }));
     },
     onQualityChange: size => {
         if (!mobile) return;
         const hint = document.querySelector(".mobile-support-hint");
-        if (hint) hint.textContent = `Experimenteller Mobile-Modus: ${size.width} x ${size.height}, adaptiv, bis zu 30 FPS. Fuer volle Qualitaet am PC/Laptop ausprobieren. WebGPU bleibt erforderlich.`;
+        if (hint) hint.textContent = `Experimenteller Mobile-Modus (${graphics.backend === "webgpu" ? "WebGPU" : "WebGL2"}): ${size.width} x ${size.height}, adaptiv, bis zu 30 FPS. Fuer volle Qualitaet am PC/Laptop ausprobieren.`;
     },
-});
+};
+const webgl = graphics.backend === "webgl2"
+    ? (await import("./webgl2-renderer.js")).createWebgl2Renderer({ ...rendererOptions, gl: graphics.gl })
+    : null;
+const fractalRenderer = webgl ? webgl.renderer : createFractalRenderer(rendererOptions);
 const { cmSize, colormapTexture: CMAP_Texture } = fractalRenderer;
 if (launchState?.fractalParams) fractalRenderer.setView(launchState.fractalParams);
 
@@ -160,7 +167,7 @@ if (isEditor) {
     });
 }
 
-const colormapGpu = createColormapGpu({
+const colormapOptions = {
     device,
     format,
     colormapTexture: CMAP_Texture,
@@ -168,7 +175,8 @@ const colormapGpu = createColormapGpu({
     previewCanvas: document.getElementById("cmCanvas"),
     curveCanvas: document.getElementById("curveCanvas"),
     paramCount: packCMParams().length,
-});
+};
+const colormapGpu = webgl ? webgl.createColormap(colormapOptions) : createColormapGpu(colormapOptions);
 
 const xlutUI = createXlutUI({
     root: document.getElementById("xlutBar"),
