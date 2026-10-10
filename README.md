@@ -21,7 +21,7 @@ A compatibility adapter supports older direct source calls. Existing
 oscillator speed is intentionally preserved (frequency * deltaTime * 2/3);
 envelope and base/punch update behavior are unchanged. Runtime state remains
 outside serialized source parameters. The context refactor itself did not
-add sources; Random was added separately below. Glider remains deferred.
+add sources; Random and Glider were added separately below.
 
 ### Random modulation source
 
@@ -56,7 +56,26 @@ not once per missed boundary. A backward beatclock reset holds the current
 value and resynchronizes. Changing Division/Phase reanchors without drawing.
 Random owns its held value and trigger state; presets serialize only the five
 parameters and restart runtime state on load. Pausing prevents evaluations;
-resume uses the current beat position with no replay. No Glider is implemented.
+resume uses the current beat position with no replay.
+
+### Glider processor (v1)
+
+**Glider** is a regular Processor with one **Input** source selector (default:
+Random) and one **Speed** slider [0, 1] (default: 0.5). Select Glider as the
+modulation signal, then choose Random or BeatSaw in Input.
+Inputs use the existing source-reference architecture and their default
+configuration; this version does not add nested source-parameter editors.
+
+The first input initializes the internal output. Later changes, including
+switching Input, smoothly approach the new input without overshoot:
+`output += (input - output) * (1 - exp(-rate * deltaTime))`.
+The rate is `0.001 * 100000^Speed` per second: Speed 0 is nearly frozen
+(time constant 1000 seconds), 0.5 is medium (about 3.16 seconds), and 1 is
+fast (0.01 seconds). It uses only context deltaTime, with no private clock.
+Subdivision of elapsed time preserves the response for held inputs.
+Pause holds the output and resume advances only the next normal tick.
+Presets retain Input and Speed, not output or upstream runtime state.
+No prediction, extrapolation, interpolation modes or additional controls.
 
 MandelFlight currently targets PCs/laptops with WebGPU-capable graphics and a
 current browser (Chrome or Edge with hardware acceleration recommended).

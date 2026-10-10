@@ -79,6 +79,12 @@ Der aktuelle Runtime-Code ist damit noch nicht als offline-faehig zertifiziert.
 
 ## Fortschritt
 
+- **2026-10-10:** Glider v1 als regulaerer Processor: ein Input, ein Speed,
+  internes Output und exponentielle Annaeherung ausschliesslich anhand
+  `ctx.deltaTime`. Erster Eingang initialisiert Output, Quellenwechsel wird
+  geglaettet. Keine eigene Clock, Prediction oder Extrapolation. Presets
+  speichern nur Input/Speed; bestehende Sources unveraendert.
+
 - **2026-10-10:** Random-Endstellungen nachkalibriert: Normalstreuung um
   Faktor 1/9 komprimiert (Varianz 1/81 des vorherigen Werts), U-Haelften
   jeweils um Faktor 1/9 an ihren Rand komprimiert. Gesamtvarianz der U-Form

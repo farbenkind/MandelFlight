@@ -2,6 +2,7 @@ import { fmod } from "./util.js";
 import { beatDivisions, dividedBeatPhase } from "./beat-divisions.js";
 import { legacyModulationSignals, MODULATION_DELTA_TIME } from "./modulation-runtime.js";
 import { makeRandomSource } from "./random-source.js";
+import { makeGliderProcessor } from "./glider-processor.js";
 
 export function makeEnv({ name = "env", source = "bassBeat", attack = 0.3, decay = 0.7 }) {
     return {
@@ -113,6 +114,10 @@ export function makePowerTransform({ exponent = 1 }) {
 }
 export const sourceRegistry = new Map();
 sourceRegistry.set("random", { label: "Random", category: "Source", create: makeRandomSource });
+sourceRegistry.set("glider", {
+    label: "Glider", category: "Processor",
+    create: () => makeGliderProcessor(sourceInputParam("random")),
+});
 export const transformRegistry = new Map([
     ["linear", { label: "Linear", initialParams: { slope: 1, bias: 0 }, create: () => makeLinearTransform({}) }],
     ["power", { label: "Power", create: () => makePowerTransform({}) }],
