@@ -1,6 +1,7 @@
 import { createFractalRenderer } from "./fractal-renderer.js";
 import { initializeGraphics } from "./gpu-startup.js";
 import { startAudioInput } from "./audio-input.js";
+import { createAudioReactControl, handleAudioReactShortcut } from "./audio-react-control.js";
 import { createColormapGpu } from "./colormap/colormap-gpu.js";
 import { debug, makeDraggable } from "./util.js";
 import { KnobState, knobs, serializeKnobs, deserializeKnobs } from "./knob-state.js";
@@ -89,8 +90,6 @@ if (launchState?.fractalParams) fractalRenderer.setView(launchState.fractalParam
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-var editor = false;
-var editorAudioReact = true;
 
 
 
@@ -191,6 +190,9 @@ function updateCMEditor() {
     refreshCMEditor();
 }
 
+const audioReact = isEditor
+    ? createAudioReactControl(document.getElementById("audioReactBtn"), updateCMEditor)
+    : null;
 
 
 
@@ -207,7 +209,7 @@ if (isEditor) {
             bpm.toFixed(1),
             beat_phase.toFixed(2)
         );
-        updateCMEditor();
+        audioReact.update();
         debug.on = false;
     }).catch((error) => {
         console.error("Audio input could not be started:", error);
@@ -267,15 +269,6 @@ if (isEditor) {
 
 
 
-/*
-setInterval(() => {
-    if (editor && !editorAudioReact) return;
-    updateAudio();
-    //applyModulation();
-    //updatePalette();
-    updateCMEditor();
-}, 25); // 40 Hz
-*/
 
 function frame() {
     fractalRenderer.render();        // smooth 60–144 Hz
@@ -344,16 +337,15 @@ window.addEventListener("keyup", ev => {
 
 window.addEventListener("keydown", ev => {
     if (!isEditor) return;
+    if (handleAudioReactShortcut(ev, audioReact,
+        presets.isOpen() || !document.getElementById("modOverlay").classList.contains("hidden")
+        || !document.getElementById("problemPopup").classList.contains("hidden"))) return;
     if (presets.isOpen()) return;
     if (ev.target.closest("input, select, textarea, button") || ev.target.isContentEditable) return;
     if (ev.key === "s") presets.openSave();
     if (ev.key === "l") presets.openLoad();
     if (ev.key === "e") {
         editorOverlay.classList.toggle("hidden");
-    }
-    if (ev.key === " ") {
-        editor ^= 1;
-        editorAudioReact ^= 1;
     }
     if (ev.key === "d") {
         debug.on = true;

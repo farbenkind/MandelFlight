@@ -79,6 +79,13 @@ Der aktuelle Runtime-Code ist damit noch nicht als offline-faehig zertifiziert.
 
 ## Fortschritt
 
+- **2026-10-10:** Audio-Reaktionspause als expliziter Runtime-Schalter in
+  [audio-react-control.js](../src/projekte/fractal-demo/audio-react-control.js).
+  Button und Space sperren nur automatische Modulationsupdates; manuelle
+  Colormap-Aenderungen und Mikrofonanalyse bleiben aktiv. Der bisherige
+  wirkungslose Space-Flagpfad ist entfernt. Kein Preset-/Fullscreen-Refactor
+  in diesem Schritt; Pause wird nicht im Preset gespeichert.
+
 - **2026-10-10:** Echte Preset-Thumbnails werden beim expliziten Speichern
   synchron aus dem frisch gerenderten Canvas aufgenommen. Die optionale
   JPEG-Metadatenstruktur `thumbnail` bleibt vom Visual-State-Codec getrennt,

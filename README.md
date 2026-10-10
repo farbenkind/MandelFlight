@@ -6,6 +6,12 @@ prototype is the fractal demo from the `farbenkind/my-website` repository.
 
 ## Run locally
 
+The editor's **Audio-Reaktion pausieren (Space)** button freezes automatic
+modulation at its current values while manual colormap editing remains active.
+Click again or press Space to resume. Microphone analysis continues; this is
+not a microphone mute. Space is ignored in form controls and open dialogs.
+The pause is runtime-only, not stored in presets.
+
 MandelFlight currently targets PCs/laptops with WebGPU-capable graphics and a
 current browser (Chrome or Edge with hardware acceleration recommended).
 Phones and tablets are not officially supported; compatible devices may run
